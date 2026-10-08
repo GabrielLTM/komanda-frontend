@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mau Mau Lanches - Sistema</title>
+<link rel="stylesheet" href="css/app.css">
+<script>window.__resources = {"https://unpkg.com/react@18.3.1/umd/react.production.min.js":"js/vendor/react.production.min.js","https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js":"js/vendor/react-dom.production.min.js"};</script>
+<script src="js/vendor/react.production.min.js"></script>
+<script src="js/vendor/react-dom.production.min.js"></script>
+<script src="js/app.js"></script>
+<script src="js/vendor/dc-runtime.js"></script>
+</head>
+<body>
+<x-dc>
+
+<div style="display:grid;grid-template-columns:200px minmax(0,1fr);min-height:100vh">
+  <aside style="background:#fff;border-right:1px solid #ECE6DF;padding:20px 14px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 6px">
+      <img src="assets/images/image-c323933e.png" alt="Mau Mau" style="width:44px;height:44px;border-radius:10px;object-fit:cover">
+      <div style="display:flex;flex-direction:column">
+        <strong style="font-size:15px;font-weight:800">Mau Mau</strong>
+        <span style="font-size:12px;color:#7A7068">Lanches · Guaíba</span>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:4px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="9">
+        <button sc-camel-on-click="{{ n.go }}" style="display:flex;align-items:center;justify-content:space-between;border:0;text-align:left;padding:11px 12px;border-radius:8px;font-size:14px;font-weight:600;background:{{ n.bg }};color:{{ n.fg }}">
+          <span>{{ n.label }}</span><span style="font-size:11px;font-weight:700;opacity:.8">{{ n.key }}</span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;background:#FFF6DB;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:12px;color:#7A5A00;font-weight:600">Tempo de espera</span>
+      <label title="Clique para editar" style="display:flex;align-items:baseline;gap:4px;border:1.5px solid transparent;border-radius:8px;padding:2px 6px;margin:0 -6px;cursor:text" style-hover="border-color:#E9D18A;background:#fff">
+        <input type="number" min="0" step="5" value="{{ wait }}" sc-camel-on-change="{{ onWait }}" sc-camel-on-focus="{{ selectAll }}" style="width:52px;border:0;outline:none;background:transparent;font-family:inherit;font-size:20px;font-weight:700;color:#1F1A17;padding:0">
+        <span style="font-size:20px;font-weight:700">min</span>
+      </label>
+    </div>
+  </aside>
+
+  <main style="padding:22px 26px;display:flex;flex-direction:column;gap:18px;min-width:0">
+    <sc-if value="{{ isPedido }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:18px;align-items:start">
+        <section style="display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <h1 style="margin:0;font-size:22px;font-weight:800;white-space:nowrap">Novo pedido</h1>
+            <input value="{{ q }}" sc-camel-on-change="{{ onQ }}" placeholder="Buscar item (ex: xis, coca)" style="flex:1 1 200px;max-width:320px;min-width:0;border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:11px 14px;font-size:14px;outline:none">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+              <button sc-camel-on-click="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600">{{ c.name }}</button>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+            <sc-for list="{{ grid }}" as="p" hint-placeholder-count="6">
+              <button sc-camel-on-click="{{ p.add }}" style="position:relative;text-align:left;background:#fff;border:1.5px solid {{ p.bd }};border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;min-height:118px" style-hover="border-color:#C41F27">
+                <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">{{ p.cat }}</span>
+                <span style="font-size:15px;font-weight:700;line-height:1.25">{{ p.name }}</span>
+                <span style="margin-top:auto;font-size:15px;font-weight:800;color:#C41F27">{{ p.price }}</span>
+                <sc-if value="{{ p.has }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;top:10px;right:10px;background:#C41F27;color:#fff;border-radius:999px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">{{ p.qty }}</span>
+                </sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+
+        <aside style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;display:flex;flex-direction:column;position:sticky;top:22px;height:calc(100vh - 44px);min-height:520px">
+          <div style="padding:16px 18px;border-bottom:1px solid #F1ECE6;display:flex;justify-content:space-between;align-items:center">
+            <strong style="font-size:16px">Comanda #{{ num }}</strong>
+            <div style="display:flex;background:#F4F0EB;border-radius:8px;padding:3px;gap:2px">
+              <sc-for list="{{ types }}" as="t" hint-placeholder-count="2">
+                <button sc-camel-on-click="{{ t.go }}" style="border:0;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding:6px 18px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto">
+            <sc-if value="{{ empty }}" hint-placeholder-val="{{ true }}">
+              <p style="margin:0;padding:28px 0;text-align:center;font-size:13px;color:#9A9089">Toque nos itens ao lado para adicionar.</p>
+            </sc-if>
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="0">
+              <div data-line-open="{{ l.openStr }}" style="display:flex;flex-direction:column;gap:8px;padding:10px {{ l.padX }};margin:0 {{ l.mX }};border-bottom:1px solid #F4F0EB;border-radius:10px;background:{{ l.bg }};box-shadow:{{ l.ring }}">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="display:flex;align-items:center;border:1px solid #E2DBD3;border-radius:8px">
+                    <button sc-camel-on-click="{{ l.dec }}" style="border:0;background:none;width:30px;height:30px;font-size:16px;font-weight:700">−</button>
+                    <span style="min-width:18px;text-align:center;font-weight:700;font-size:14px">{{ l.qty }}</span>
+                    <button sc-camel-on-click="{{ l.inc }}" style="border:0;background:none;width:30px;height:30px;font-size:16px;font-weight:700">+</button>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14px;font-weight:600">{{ l.name }}</span>
+                    <sc-if value="{{ l.hasAdd }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:12px;font-weight:700;color:#237A33">{{ l.addText }}</span>
+                    </sc-if>
+                    <sc-if value="{{ l.hasRem }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:12px;font-weight:700;color:#C41F27">{{ l.remText }}</span>
+                    </sc-if>
+                  </div>
+                  <span style="font-size:14px;font-weight:700">{{ l.total }}</span>
+                </div>
+                <sc-if value="{{ l.canEdit }}" hint-placeholder-val="{{ false }}">
+                  <button sc-camel-on-click="{{ l.edit }}" style="align-self:flex-start;margin-left:72px;border:0;background:none;padding:0;font-size:12px;font-weight:700;color:#C41F27">{{ l.editLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ l.open }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:10px;background:#FAF8F5;border-radius:8px;padding:10px">
+                   <sc-if value="{{ l.hasIngs }}" hint-placeholder-val="{{ true }}">
+                   <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Tirar</span>
+                   <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ l.ings }}" as="i" hint-placeholder-count="4">
+                      <button sc-camel-on-click="{{ i.go }}" style="border:1px solid {{ i.bd }};background:{{ i.bg }};color:{{ i.fg }};text-decoration:{{ i.deco }};border-radius:999px;padding:6px 11px;font-size:12px;font-weight:600">{{ i.name }}</button>
+                    </sc-for>
+                   </div>
+                   </sc-if>
+                   <sc-if value="{{ l.hasExtras }}" hint-placeholder-val="{{ true }}">
+                   <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Adicionar</span>
+                   <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ l.extras }}" as="x" hint-placeholder-count="3">
+                      <button sc-camel-on-click="{{ x.go }}" style="border:1px solid {{ x.bd }};background:{{ x.bg }};color:{{ x.fg }};border-radius:999px;padding:6px 11px;font-size:12px;font-weight:600;display:flex;gap:5px">{{ x.name }}<span style="opacity:.75">{{ x.price }}</span></button>
+                    </sc-for>
+                   </div>
+                   </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:14px 18px;display:flex;flex-direction:column;gap:12px;border-top:1px solid #F1ECE6">
+            <input value="{{ phone }}" sc-camel-on-change="{{ onPhone }}" type="tel" inputmode="tel" placeholder="Telefone do cliente" style="border:1px solid #E2DBD3;border-radius:8px;padding:9px;font-size:13px;min-width:0">
+            <sc-if value="{{ isDelivery }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <sc-raw-select value="{{ bairro }}" sc-camel-on-change="{{ onBairro }}" style="border:1px solid #E2DBD3;border-radius:8px;padding:9px;font-size:13px;background:#fff">
+                  <sc-for list="{{ bairros }}" as="b" hint-placeholder-count="3"><option value="{{ b.name }}">{{ b.label }}</option></sc-for>
+                </sc-raw-select>
+                <input value="{{ street }}" sc-camel-on-change="{{ onStreet }}" placeholder="Rua e número" style="border:1px solid #E2DBD3;border-radius:8px;padding:9px;font-size:13px;min-width:0">
+              </div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px">
+              <sc-for list="{{ pays }}" as="m" hint-placeholder-count="5">
+                <button sc-camel-on-click="{{ m.go }}" style="border:1.5px solid {{ m.bd }};background:{{ m.bg }};color:#1F1A17;border-radius:8px;padding:9px 0;font-size:12px;font-weight:700">{{ m.label }}</button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ isFiado }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:6px;background:#FFF6DB;border-radius:8px;padding:10px">
+                <input value="{{ fiadoName }}" sc-camel-on-change="{{ onFiadoName }}" placeholder="Quem pediu? (nome)" style="border:1px solid {{ fiadoBd }};border-radius:8px;padding:9px;font-size:13px;min-width:0;background:#fff">
+                <span style="font-size:12px;color:#7A5A00">O pedido fica registrado e o valor vai para "A receber".</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isCash }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:10px;align-items:center">
+                <input value="{{ cash }}" sc-camel-on-change="{{ onCash }}" type="number" placeholder="Valor recebido" style="flex:1;border:1px solid #E2DBD3;border-radius:8px;padding:9px;font-size:13px;min-width:0">
+                <span style="font-size:13px;font-weight:700;color:#2F7A3B">Troco {{ change }}</span>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#6E655E">
+              <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>{{ subtotal }}</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Entrega</span><span>{{ fee }}</span></div>
+            </div>
+            <sc-if value="{{ canPreview }}" hint-placeholder-val="{{ false }}">
+              <button sc-camel-on-click="{{ openPreview }}" style="border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#1F1A17" style-hover="background:#FAF8F5">Visualizar impressão</button>
+            </sc-if>
+            <button sc-camel-on-click="{{ finish }}" style="border:0;background:#C41F27;color:#fff;border-radius:10px;padding:15px 18px;font-size:16px;font-weight:800;display:flex;justify-content:space-between" style-hover="background:#A8181F">
+              <span>{{ finishLabel }}</span><span>{{ total }}</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCatalog }}" hint-placeholder-val="{{ false }}">
+      <section style="display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Cardápio</h1>
+            <span style="font-size:13px;color:#7A7068">{{ catalog.productCount }} produtos disponíveis</span>
+          </div>
+          <input type="search" value="{{ q }}" sc-camel-on-change="{{ onQ }}" aria-label="Buscar produtos do cardápio" placeholder="Buscar produto" style="width:min(100%,280px);border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:10px 14px;font-size:14px">
+        </div>
+        <sc-if value="{{ catalog.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;padding:28px;text-align:center;color:#7A7068;font-size:14px">
+            <sc-if value="{{ catalog.searching }}" hint-placeholder-val="{{ false }}">
+              <span>Nenhum produto disponível corresponde à busca.</span>
+            </sc-if>
+            <sc-if value="{{ catalog.searching }}" hint-placeholder-val="{{ true }}">
+              <span>Nenhum produto disponível no cardápio.</span>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-for list="{{ catalog.categories }}" as="category" hint-placeholder-count="4">
+          <section aria-label="{{ category.name }}" style="display:flex;flex-direction:column;gap:10px">
+            <h2 style="margin:0;padding-bottom:8px;border-bottom:2px solid #F5B800;font-size:17px;font-weight:800">{{ category.name }}</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+              <sc-for list="{{ category.products }}" as="product" hint-placeholder-count="3">
+                <article style="background:#fff;border:1px solid #ECE6DF;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                    <h3 style="margin:0;font-size:15px;font-weight:700;line-height:1.35">{{ product.name }}</h3>
+                    <strong style="flex:0 0 auto;color:#C41F27;font-size:15px;font-weight:800">{{ product.price }}</strong>
+                  </div>
+                  <sc-if value="{{ product.hasDescription }}" hint-placeholder-val="{{ false }}">
+                    <p style="margin:0;color:#7A7068;font-size:13px;line-height:1.5">{{ product.description }}</p>
+                  </sc-if>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ isCategories }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Categorias</h1>
+            <span style="font-size:13px;color:#7A7068">{{ categories.activeCount }} ativas · {{ categories.inactiveCount }} inativas</span>
+          </div>
+          <button sc-camel-on-click="{{ categories.openNew }}" style="border:0;background:#C41F27;color:#fff;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700" style-hover="background:#A8181F">+ Nova categoria</button>
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;overflow-x:auto">
+          <div style="display:grid;grid-template-columns:minmax(180px,1fr) 100px 120px 245px;gap:12px;padding:12px 18px;background:#FAF8F5;font-size:12px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">
+            <span>Categoria</span><span>Status</span><span>Produtos</span><span>Ações</span>
+          </div>
+          <sc-for list="{{ categories.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:minmax(180px,1fr) 100px 120px 245px;gap:12px;padding:13px 18px;border-top:1px solid #F1ECE6;align-items:center">
+              <strong style="font-size:14px;min-width:0;overflow-wrap:anywhere">{{ r.name }}</strong>
+              <span style="justify-self:start;background:{{ r.statusBg }};color:{{ r.statusFg }};border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700">{{ r.status }}</span>
+              <span style="font-size:13px;color:#6E655E">{{ r.products }}</span>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <sc-if value="{{ r.canUp }}" hint-placeholder-val="{{ false }}">
+                  <button sc-camel-on-click="{{ r.up }}" title="Mover para cima" aria-label="Mover categoria para cima" style="border:1px solid #E2DBD3;background:#fff;border-radius:8px;width:34px;height:34px;font-size:16px;font-weight:700;color:#4A423C">↑</button>
+                </sc-if>
+                <sc-if value="{{ r.canDown }}" hint-placeholder-val="{{ false }}">
+                  <button sc-camel-on-click="{{ r.down }}" title="Mover para baixo" aria-label="Mover categoria para baixo" style="border:1px solid #E2DBD3;background:#fff;border-radius:8px;width:34px;height:34px;font-size:16px;font-weight:700;color:#4A423C">↓</button>
+                </sc-if>
+                <button sc-camel-on-click="{{ r.edit }}" style="border:1px solid #E2DBD3;background:#fff;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:700;color:#4A423C">Editar</button>
+                <button sc-camel-on-click="{{ r.toggle }}" style="border:1px solid {{ r.statusBg }};background:{{ r.statusBg }};border-radius:8px;padding:8px 11px;font-size:12px;font-weight:700;color:{{ r.statusFg }}">{{ r.toggleLabel }}</button>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ categories.empty }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;padding:24px;text-align:center;font-size:13px;color:#9A9089;border-top:1px solid #F1ECE6">Nenhuma categoria cadastrada.</p>
+          </sc-if>
+        </div>
+        <span style="font-size:12px;color:#7A7068">Categorias inativas e seus produtos deixam de aparecer na tela de pedidos. Os produtos continuam cadastrados e voltam a aparecer quando a categoria for reativada.</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isMenu }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Cardápio</h1>
+            <span style="font-size:13px;color:#7A7068">{{ activeCount }} itens à venda · {{ pausedCount }} pausados</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input value="{{ q }}" sc-camel-on-change="{{ onQ }}" placeholder="Buscar no cardápio" style="border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:10px 14px;font-size:14px;width:240px">
+            <button sc-camel-on-click="{{ openNew }}" style="border:0;background:#C41F27;color:#fff;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700" style-hover="background:#A8181F">+ Novo item</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+            <button sc-camel-on-click="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600">{{ c.name }}</button>
+          </sc-for>
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 130px 120px 160px 60px;gap:16px;padding:12px 18px;background:#FAF8F5;font-size:12px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">
+            <span>Item</span><span>Categoria</span><span>Preço</span><span>Acomp. / Adic.</span><span>À venda</span>
+          </div>
+          <sc-for list="{{ menu }}" as="r" hint-placeholder-count="6">
+            <div style="border-top:1px solid #F1ECE6"><div style="display:grid;grid-template-columns:minmax(0,1fr) 130px 120px 160px 60px;gap:16px;padding:14px 18px;align-items:center;opacity:{{ r.op }}">
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <strong style="font-size:14px;min-width:0">{{ r.name }}</strong>
+                  <button sc-camel-on-click="{{ r.edit }}" style="border:1px solid #E2DBD3;background:#fff;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:700;color:#4A423C;white-space:nowrap">Editar</button>
+                </div>
+                <span style="font-size:12px;color:#7A7068;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.desc }}</span>
+              </div>
+              <span style="font-size:13px;color:#6E655E">{{ r.cat }}</span>
+              <div style="display:flex;align-items:center;border:1px solid #E2DBD3;border-radius:8px;padding:0 10px;height:36px;font-size:14px;font-weight:700;gap:4px"><span style="color:#9A9089;font-weight:500">R$</span>{{ r.priceN }}</div>
+              <button sc-camel-on-click="{{ r.expand }}" style="border:1px solid #E2DBD3;background:#fff;border-radius:8px;height:36px;padding:0 10px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:6px"><span>{{ r.ingCount }}</span><span>{{ r.arrow }}</span></button>
+              <button sc-camel-on-click="{{ r.toggle }}" style="border:0;width:46px;height:26px;border-radius:999px;background:{{ r.tg }};position:relative;padding:0">
+                <span style="position:absolute;top:3px;left:{{ r.kx }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s"></span>
+              </button>
+            </div>
+            <sc-if value="{{ r.open }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:4px 18px 16px;display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;color:#7A7068">Acompanhamentos que o atendente pode tirar no pedido</span>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                  <sc-for list="{{ r.ings }}" as="i" hint-placeholder-count="3">
+                    <span style="display:flex;align-items:center;gap:4px;border:1px solid #E2DBD3;border-radius:999px;padding:4px 4px 4px 12px;font-size:13px;font-weight:600;background:#FAF8F5">{{ i.name }}<button sc-camel-on-click="{{ i.del }}" style="border:0;background:none;width:22px;height:22px;border-radius:50%;font-size:14px;color:#7A7068" style-hover="background:#FDECEC;color:#C41F27">×</button></span>
+                  </sc-for>
+                  <sc-if value="{{ r.noIngs }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#9A9089">Nenhum acompanhamento cadastrado.</span></sc-if>
+                </div>
+                <div style="display:flex;gap:8px;max-width:360px">
+                  <input value="{{ newIng }}" sc-camel-on-change="{{ onNewIng }}" sc-camel-on-key-down="{{ r.onIngKey }}" placeholder="Novo acompanhamento" style="flex:1;min-width:0;border:1px solid #E2DBD3;border-radius:8px;padding:8px 10px;font-size:13px">
+                  <button sc-camel-on-click="{{ r.addIng }}" style="border:0;background:#1F1A17;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700">Adicionar</button>
+                </div>
+                <span style="font-size:12px;color:#7A7068;margin-top:6px">Adicionais pagos que o atendente pode incluir</span>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                  <sc-for list="{{ r.extras }}" as="x" hint-placeholder-count="2">
+                    <span style="display:flex;align-items:center;gap:6px;border:1px solid #BFE3C5;border-radius:999px;padding:4px 4px 4px 12px;font-size:13px;font-weight:600;background:#F2FAF3">{{ x.name }}<span style="color:#237A33;font-weight:700">{{ x.price }}</span><button sc-camel-on-click="{{ x.del }}" style="border:0;background:none;width:22px;height:22px;border-radius:50%;font-size:14px;color:#7A7068" style-hover="background:#FDECEC;color:#C41F27">×</button></span>
+                  </sc-for>
+                  <sc-if value="{{ r.noExtras }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#9A9089">Nenhum adicional cadastrado.</span></sc-if>
+                </div>
+                <div style="display:flex;gap:8px;max-width:420px">
+                  <input value="{{ newEx }}" sc-camel-on-change="{{ onNewEx }}" placeholder="Novo adicional" style="flex:1;min-width:0;border:1px solid #E2DBD3;border-radius:8px;padding:8px 10px;font-size:13px">
+                  <input value="{{ newExP }}" sc-camel-on-change="{{ onNewExP }}" placeholder="R$ 0,00" style="width:80px;border:1px solid #E2DBD3;border-radius:8px;padding:8px 10px;font-size:13px">
+                  <button sc-camel-on-click="{{ r.addEx }}" style="border:0;background:#1F1A17;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700">Adicionar</button>
+                </div>
+              </div>
+            </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px;min-height:calc(100vh - 44px)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Pedidos</h1>
+            <span style="font-size:13px;color:#7A7068">Arraste o card para mudar o status</span>
+          </div>
+        </div>
+        <div style="flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch">
+          <sc-for list="{{ cols }}" as="col" hint-placeholder-count="3">
+            <div sc-camel-on-drag-over="{{ col.over }}" sc-camel-on-drag-leave="{{ col.leave }}" sc-camel-on-drop="{{ col.drop }}" style="background:{{ col.bg }};border:2px dashed {{ col.bd }};border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:400px;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;padding:2px 4px 4px">
+                <span style="width:10px;height:10px;border-radius:50%;background:{{ col.dot }}"></span>
+                <strong style="font-size:13px;font-weight:800;line-height:1.25">{{ col.name }}</strong>
+                <span style="margin-left:auto;background:#fff;border:1px solid #ECE6DF;border-radius:999px;min-width:26px;height:22px;padding:0 6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-sizing:border-box">{{ col.count }}</span>
+              </div>
+              <sc-for list="{{ col.cards }}" as="o" hint-placeholder-count="2">
+                <div draggable="true" sc-camel-on-click="{{ o.open }}" sc-camel-on-drag-start="{{ o.dragStart }}" sc-camel-on-drag-end="{{ o.dragEnd }}" style="background:#fff;border:1px solid #ECE6DF;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-width:0;opacity:{{ o.op }};box-shadow:0 1px 2px rgba(31,26,23,.05)">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <strong style="font-size:15px;font-weight:800">#{{ o.num }}</strong>
+                      <span style="margin-left:auto;font-size:12px;color:#7A7068;font-weight:600">{{ o.time }}</span>
+                    </div>
+                    <span style="align-self:flex-start;max-width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:800;border-radius:6px;padding:3px 8px;background:{{ o.typeBg }};color:{{ o.typeFg }}">{{ o.typeLabel }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <sc-for list="{{ o.items }}" as="it" hint-placeholder-count="2">
+                      <div style="display:flex;flex-direction:column;gap:1px">
+                        <span style="font-size:13px;font-weight:600;overflow-wrap:anywhere">{{ it.t }}</span>
+                        <sc-if value="{{ it.hasMod }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#C41F27">{{ it.mod }}</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ o.isDelivery }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #F4F0EB;padding-top:10px">
+                      <span style="font-size:11px;font-weight:700;color:{{ o.motoLabelFg }};text-transform:uppercase;letter-spacing:.04em">{{ o.motoLabel }}</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ o.motos }}" as="m" hint-placeholder-count="2">
+                          <button sc-camel-on-click="{{ m.go }}" style="border:1.5px solid {{ m.bd }};background:{{ m.bg }};color:{{ m.fg }};border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700">{{ m.name }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;border-top:1px solid #F4F0EB;padding-top:10px">
+                    <div style="display:flex;flex-direction:column">
+                      <span style="font-size:14px;font-weight:800;white-space:nowrap">{{ o.total }}</span>
+                      <span style="font-size:12px;color:#7A7068">{{ o.pay }}</span>
+                    </div>
+                    <button sc-camel-on-click="{{ o.print }}" style="margin-left:auto;border:1px solid #E2DBD3;background:#fff;color:#1F1A17;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap" style-hover="background:#FAF8F5">Imprimir</button>
+                    <sc-if value="{{ o.canNext }}" hint-placeholder-val="{{ true }}">
+                      <button sc-camel-on-click="{{ o.next }}" style="border:0;background:#1F1A17;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap" style-hover="background:#C41F27">{{ o.nextLabel }}</button>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ col.empty }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:13px;color:#9A9089;padding:24px">Nenhum pedido</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStock }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Estoque</h1>
+            <span style="font-size:13px;color:#7A7068">{{ st.lowCount }} insumos abaixo do mínimo</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ st.filters }}" as="c" hint-placeholder-count="2">
+              <button sc-camel-on-click="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600">{{ c.name }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(140px,1fr) minmax(90px,160px) 70px 64px 128px;gap:16px;padding:12px 18px;background:#FAF8F5;font-size:12px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">
+            <span>Insumo</span><span>Saldo</span><span>Mínimo</span><span>Status</span><span>Ajustar</span>
+          </div>
+          <sc-for list="{{ st.rows }}" as="r" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:minmax(140px,1fr) minmax(90px,160px) 70px 64px 128px;gap:16px;padding:12px 18px;border-top:1px solid #F1ECE6;align-items:center">
+              <strong style="font-size:14px;font-weight:600;min-width:0;overflow-wrap:anywhere">{{ r.name }}</strong>
+              <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                <span style="font-size:14px;font-weight:700;white-space:nowrap">{{ r.cur }}</span>
+                <div style="height:6px;border-radius:999px;background:#F1ECE6;overflow:hidden"><div style="height:100%;width:{{ r.pct }};background:{{ r.barBg }};border-radius:999px"></div></div>
+              </div>
+              <span style="font-size:13px;color:#6E655E;white-space:nowrap">{{ r.min }}</span>
+              <span style="justify-self:start;font-size:11px;font-weight:800;border-radius:6px;padding:4px 8px;background:{{ r.sBg }};color:{{ r.sFg }}">{{ r.status }}</span>
+              <div style="display:flex;align-items:center;border:1px solid #E2DBD3;border-radius:8px;justify-self:start">
+                <button sc-camel-on-click="{{ r.dec }}" style="border:0;background:none;width:30px;height:32px;font-size:16px;font-weight:700">−</button>
+                <label style="display:flex;align-items:center;gap:2px;border-left:1px solid #E2DBD3;border-right:1px solid #E2DBD3;padding:0 6px;height:32px;cursor:text">
+                  <input value="{{ r.stepTxt }}" sc-camel-on-change="{{ r.onStep }}" sc-camel-on-focus="{{ selectAll }}" inputmode="decimal" style="width:34px;border:0;outline:none;background:transparent;text-align:right;font-family:inherit;font-size:13px;font-weight:700;color:#1F1A17;padding:0">
+                  <span style="font-size:12px;color:#7A7068">{{ r.unit }}</span>
+                </label>
+                <button sc-camel-on-click="{{ r.inc }}" style="border:0;background:none;width:30px;height:32px;font-size:16px;font-weight:700">+</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isMoto }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Motoboys</h1>
+            <span style="font-size:13px;color:#7A7068">Acerto do dia: diária fixa + taxa dos bairros atendidos</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#FFF6DB;border-radius:10px;padding:8px 8px 8px 14px">
+            <span style="font-size:13px;font-weight:700;color:#7A5A00">Diária (todos)</span>
+            <label title="Clique para editar" style="display:flex;align-items:center;gap:4px;background:#fff;border:1.5px solid #E9D18A;border-radius:8px;padding:0 10px;height:36px;cursor:text">
+              <span style="font-size:14px;color:#7A7068">R$</span>
+              <input value="{{ mb.dailyTxt }}" sc-camel-on-change="{{ mb.onDaily }}" sc-camel-on-focus="{{ selectAll }}" style="width:56px;border:0;outline:none;background:transparent;font-family:inherit;font-size:16px;font-weight:800;color:#1F1A17;padding:0">
+            </label>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;padding:14px 18px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:13px;font-weight:700">Cadastrar motoboy</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input value="{{ mb.newName }}" sc-camel-on-change="{{ mb.onNewName }}" sc-camel-on-key-down="{{ mb.onKey }}" placeholder="Nome completo" style="flex:1 1 200px;min-width:0;border:1px solid {{ mb.nameBd }};border-radius:8px;padding:10px 12px;font-size:14px">
+            <input value="{{ mb.newPhone }}" sc-camel-on-change="{{ mb.onNewPhone }}" sc-camel-on-key-down="{{ mb.onKey }}" placeholder="Telefone (opcional)" style="flex:0 1 180px;min-width:0;border:1px solid #E2DBD3;border-radius:8px;padding:10px 12px;font-size:14px">
+            <button sc-camel-on-click="{{ mb.add }}" style="border:0;background:#C41F27;color:#fff;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700" style-hover="background:#A8181F">Adicionar</button>
+          </div>
+        </div>
+        <sc-if value="{{ mb.empty }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:24px;text-align:center;font-size:13px;color:#9A9089">Nenhum motoboy cadastrado.</p></sc-if>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+          <sc-for list="{{ mb.cards }}" as="m" hint-placeholder-count="2">
+            <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;display:flex;flex-direction:column">
+              <div style="padding:16px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F1ECE6">
+                <span style="width:40px;height:40px;border-radius:50%;background:#FFF6DB;color:#7A5A00;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">{{ m.ini }}</span>
+                <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                  <strong style="font-size:15px">{{ m.name }}</strong>
+                  <sc-if value="{{ m.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#7A7068">{{ m.sub }}</span></sc-if>
+                </div>
+                <span style="font-size:11px;font-weight:800;border-radius:6px;padding:4px 8px;background:{{ m.sBg }};color:{{ m.sFg }}">{{ m.status }}</span>
+                <button sc-camel-on-click="{{ m.remove }}" title="Remover motoboy" style="border:0;background:none;width:30px;height:30px;border-radius:8px;font-size:18px;color:#9A9089" style-hover="background:#FDECEC;color:#C41F27">×</button>
+              </div>
+              <div style="padding:8px 18px;display:flex;flex-direction:column;flex:1">
+                <sc-for list="{{ m.trips }}" as="t" hint-placeholder-count="3">
+                  <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #F4F0EB;font-size:13px">
+                    <strong style="min-width:40px">#{{ t.num }}</strong><span style="flex:1;color:#4A423C">{{ t.bairro }}</span><span style="color:#7A7068">{{ t.st }}</span><span style="font-weight:700;min-width:64px;text-align:right">{{ t.fee }}</span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ m.noTrips }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:18px 0;text-align:center;font-size:13px;color:#9A9089">Nenhuma entrega hoje.</p></sc-if>
+              </div>
+              <div style="padding:14px 18px;border-top:1px solid #F1ECE6;display:flex;flex-direction:column;gap:8px;font-size:13px;color:#6E655E">
+                <div style="display:flex;justify-content:space-between;gap:12px"><span style="white-space:nowrap">Diária fixa</span><span style="white-space:nowrap">{{ m.base }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px"><span style="white-space:nowrap">Taxas · {{ m.nLabel }}</span><span style="white-space:nowrap">{{ m.fees }}</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:6px;padding-top:10px;border-top:1px dashed #ECE6DF;gap:10px">
+                  <div style="display:flex;flex-direction:column"><span style="font-size:12px">Total a pagar</span><strong style="font-size:20px;color:#1F1A17">{{ m.total }}</strong></div>
+                  <button sc-camel-on-click="{{ m.pay }}" style="border:{{ m.btnBd }};background:{{ m.btnBg }};color:{{ m.btnFg }};border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap">{{ m.btn }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBairros }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:860px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:22px;font-weight:800">Bairros &amp; taxas de entrega</h1>
+            <span style="font-size:13px;color:#7A7068">{{ nb.count }} bairros atendidos · taxas de {{ nb.range }}</span>
+          </div>
+          <input value="{{ nb.q }}" sc-camel-on-change="{{ nb.onQ }}" placeholder="Buscar bairro" style="border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:10px 14px;font-size:14px;width:220px;max-width:100%">
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;padding:14px 18px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:13px;font-weight:700">Cadastrar bairro</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input value="{{ nb.name }}" sc-camel-on-change="{{ nb.onName }}" sc-camel-on-key-down="{{ nb.onKey }}" placeholder="Nome do bairro" style="flex:1 1 200px;min-width:0;border:1px solid {{ nb.nameBd }};border-radius:8px;padding:10px 12px;font-size:14px">
+            <div style="display:flex;align-items:center;gap:4px;border:1px solid {{ nb.feeBd }};border-radius:8px;padding:0 12px;width:120px;box-sizing:border-box">
+              <span style="color:#9A9089;font-size:14px">R$</span>
+              <input value="{{ nb.fee }}" sc-camel-on-change="{{ nb.onFee }}" sc-camel-on-key-down="{{ nb.onKey }}" placeholder="0,00" style="border:0;outline:none;width:100%;font-size:14px;font-weight:700;padding:10px 0">
+            </div>
+            <button sc-camel-on-click="{{ nb.add }}" style="border:0;background:#C41F27;color:#fff;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700" style-hover="background:#A8181F">Adicionar</button>
+          </div>
+          <sc-if value="{{ nb.hasErr }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:600;color:#C41F27">{{ nb.err }}</span></sc-if>
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(140px,1fr) 130px 70px 40px;gap:14px;padding:12px 18px;background:#FAF8F5;font-size:12px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">
+            <span>Bairro</span><span>Taxa</span><span>Ativo</span><span></span>
+          </div>
+          <sc-for list="{{ nb.rows }}" as="r" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:minmax(140px,1fr) 130px 70px 40px;gap:14px;padding:10px 18px;border-top:1px solid #F1ECE6;align-items:center;opacity:{{ r.op }}">
+              <input value="{{ r.name }}" sc-camel-on-change="{{ r.onName }}" style="min-width:0;border:1px solid transparent;border-radius:8px;padding:7px 8px;margin-left:-9px;font-size:14px;font-weight:600;background:transparent" style-hover="border-color:#E2DBD3" style-focus="border-color:#E2DBD3;background:#fff;outline:none">
+              <div style="display:flex;align-items:center;gap:4px;border:1px solid #E2DBD3;border-radius:8px;padding:0 10px;height:36px">
+                <span style="color:#9A9089;font-size:13px">R$</span>
+                <input value="{{ r.feeN }}" sc-camel-on-change="{{ r.onFee }}" style="border:0;outline:none;width:100%;font-size:14px;font-weight:700;background:transparent">
+              </div>
+              <button sc-camel-on-click="{{ r.toggle }}" style="border:0;width:46px;height:26px;border-radius:999px;background:{{ r.tg }};position:relative;padding:0">
+                <span style="position:absolute;top:3px;left:{{ r.kx }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s"></span>
+              </button>
+              <button sc-camel-on-click="{{ r.del }}" title="Remover bairro" style="border:0;background:none;width:32px;height:32px;border-radius:8px;font-size:18px;color:#9A9089" style-hover="background:#FDECEC;color:#C41F27">×</button>
+            </div>
+          </sc-for>
+          <sc-if value="{{ nb.empty }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:24px;text-align:center;font-size:13px;color:#9A9089;border-top:1px solid #F1ECE6">Nenhum bairro encontrado.</p></sc-if>
+        </div>
+        <span style="font-size:12px;color:#7A7068">Bairros desativados não aparecem na tela de pedido. A taxa é somada automaticamente ao total e ao acerto do motoboy.</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReport }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <h1 style="margin:0;font-size:22px;font-weight:800">Caixa &amp; Relatórios</h1>
+          <div style="display:flex;background:#fff;border:1px solid #ECE6DF;border-radius:10px;padding:3px;gap:2px">
+            <sc-for list="{{ rp.periods }}" as="p" hint-placeholder-count="3">
+              <button sc-camel-on-click="{{ p.go }}" style="border:0;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;background:{{ p.bg }};color:{{ p.fg }}">{{ p.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+          <sc-for list="{{ rp.kpis }}" as="k" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12px;font-weight:600;color:#7A7068">{{ k.label }}</span>
+              <strong style="font-size:22px;font-weight:800;line-height:1.15">{{ k.value }}</strong>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start">
+          <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <strong style="font-size:15px">Formas de pagamento</strong>
+            <sc-for list="{{ rp.pays }}" as="p" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:600">{{ p.name }}</span><span style="color:#6E655E">{{ p.value }} · {{ p.share }}</span></div>
+                <div style="height:8px;border-radius:999px;background:#F1ECE6;overflow:hidden"><div style="height:100%;width:{{ p.share }};background:#C41F27;border-radius:999px"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:4px">
+            <strong style="font-size:15px;margin-bottom:4px">Saída de insumos</strong>
+            <span style="font-size:12px;color:#7A7068;margin-bottom:6px">Baixa automática pelos pedidos fechados</span>
+            <sc-for list="{{ rp.usage }}" as="u" hint-placeholder-count="6">
+              <div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #F4F0EB;font-size:13px">
+                <span style="flex:1;min-width:0">{{ u.name }}</span><strong style="color:#C41F27;white-space:nowrap">−{{ u.out }}</strong><span style="color:#7A7068;min-width:90px;text-align:right;white-space:nowrap">{{ u.left }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #ECE6DF;border-radius:14px;overflow:hidden">
+          <div style="padding:14px 18px"><strong style="font-size:15px">Extrato de pedidos</strong></div>
+          <div style="overflow-x:auto">
+            <div style="min-width:640px">
+              <div style="display:grid;grid-template-columns:60px 60px 150px minmax(0,1fr) 80px 90px;gap:12px;padding:10px 18px;background:#FAF8F5;font-size:12px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">
+                <span>#</span><span>Hora</span><span>Tipo</span><span>Itens</span><span>Pgto</span><span style="text-align:right">Total</span>
+              </div>
+              <sc-for list="{{ rp.rows }}" as="o" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:60px 60px 150px minmax(0,1fr) 80px 90px;gap:12px;padding:11px 18px;border-top:1px solid #F1ECE6;font-size:13px;align-items:center">
+                  <strong>#{{ o.num }}</strong><span style="color:#7A7068">{{ o.time }}</span><span>{{ o.type }}</span><span style="color:#4A423C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.items }}</span><span style="color:#7A7068">{{ o.pay }}</span><strong style="text-align:right">{{ o.total }}</strong>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+<sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1A17;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600">Pedido enviado para a cozinha</div>
+</sc-if>
+<sc-if value="{{ nf.open }}" hint-placeholder-val="{{ false }}">
+  <div sc-camel-on-click="{{ closeNew }}" style="position:fixed;inset:0;background:rgba(31,26,23,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50">
+    <div sc-camel-on-click="{{ stop }}" style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow:auto;display:flex;flex-direction:column">
+      <div style="padding:18px 22px;border-bottom:1px solid #F1ECE6;display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:18px;font-weight:800">{{ nf.title }}</strong>
+        <button sc-camel-on-click="{{ closeNew }}" style="border:0;background:none;width:32px;height:32px;border-radius:8px;font-size:20px;color:#7A7068" style-hover="background:#F4F0EB">×</button>
+      </div>
+      <div style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:#4A423C">Nome do item
+          <input value="{{ nf.name }}" sc-camel-on-change="{{ nf.onName }}" maxlength="100" placeholder="Ex: Xis Frango" style="border:1px solid {{ nf.nameBd }};border-radius:8px;padding:11px 12px;font-size:15px;font-weight:500">
+        </label>
+        <span style="margin-top:-12px;font-size:12px;color:#C41F27">{{ nf.nameError }}</span>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:13px;font-weight:700;color:#4A423C">Categoria</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <sc-for list="{{ nf.cats }}" as="c" hint-placeholder-count="4">
+              <button sc-camel-on-click="{{ c.go }}" style="border:1.5px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600">{{ c.name }}</button>
+            </sc-for>
+            <button sc-camel-on-click="{{ nf.startCat }}" style="border:1.5px dashed {{ nf.newCatBd }};background:{{ nf.newCatBg }};color:#C41F27;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700">+ Nova categoria</button>
+          </div>
+          <sc-if value="{{ nf.creatingCat }}" hint-placeholder-val="{{ false }}">
+            <input value="{{ nf.catName }}" sc-camel-on-change="{{ nf.onCatName }}" placeholder="Nome da nova categoria (ex: Pastéis)" style="border:1px solid {{ nf.catBd }};border-radius:8px;padding:10px 12px;font-size:14px;background:#FFFBF0">
+          </sc-if>
+          <span style="font-size:12px;color:#C41F27">{{ nf.catError }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:#4A423C">Preço
+            <div style="display:flex;align-items:center;gap:4px;border:1px solid {{ nf.priceBd }};border-radius:8px;padding:0 12px;height:43px"><span style="color:#9A9089;font-weight:500">R$</span>            <input value="{{ nf.price }}" sc-camel-on-change="{{ nf.onPrice }}" inputmode="decimal" placeholder="0,00" style="border:0;outline:none;width:100%;font-size:15px;font-weight:700"></div>
+            <span style="font-size:12px;font-weight:400;color:#C41F27">{{ nf.priceError }}</span>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:#4A423C">Descrição
+            <input value="{{ nf.desc }}" sc-camel-on-change="{{ nf.onDesc }}" placeholder="Ingredientes, tamanho…" style="border:1px solid #E2DBD3;border-radius:8px;padding:11px 12px;font-size:14px;font-weight:500">
+          </label>
+        </div>
+        <span style="font-size:12px;color:#7A7068">Acompanhamentos e adicionais podem ser cadastrados depois, na linha do item.</span>
+      </div>
+      <div style="padding:16px 22px;border-top:1px solid #F1ECE6;display:flex;justify-content:flex-end;gap:8px">
+        <button sc-camel-on-click="{{ closeNew }}" style="border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700">Cancelar</button>
+        <button sc-camel-on-click="{{ nf.save }}" style="border:0;background:#C41F27;color:#fff;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:800" style-hover="background:#A8181F">{{ nf.saveLabel }}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ cf.open }}" hint-placeholder-val="{{ false }}">
+  <div sc-camel-on-click="{{ cf.close }}" style="position:fixed;inset:0;background:rgba(31,26,23,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50">
+    <div role="dialog" aria-modal="true" aria-labelledby="category-dialog-title" sc-camel-on-click="{{ stop }}" style="background:#fff;border-radius:16px;width:100%;max-width:460px;display:flex;flex-direction:column">
+      <div style="padding:18px 22px;border-bottom:1px solid #F1ECE6;display:flex;justify-content:space-between;align-items:center">
+        <strong id="category-dialog-title" style="font-size:18px;font-weight:800">{{ cf.title }}</strong>
+        <button sc-camel-on-click="{{ cf.close }}" aria-label="Fechar" style="border:0;background:none;width:32px;height:32px;border-radius:8px;font-size:20px;color:#7A7068" style-hover="background:#F4F0EB">×</button>
+      </div>
+      <div style="padding:20px 22px;display:flex;flex-direction:column;gap:8px">
+        <label for="category-name" style="font-size:13px;font-weight:700;color:#4A423C">Nome da categoria</label>
+        <input id="category-name" value="{{ cf.name }}" sc-camel-on-change="{{ cf.onName }}" maxlength="60" placeholder="Ex: Pastéis" style="border:1px solid {{ cf.nameBd }};border-radius:8px;padding:11px 12px;font-size:15px">
+        <span style="min-height:18px;font-size:12px;color:#C41F27">{{ cf.error }}</span>
+      </div>
+      <div style="padding:16px 22px;border-top:1px solid #F1ECE6;display:flex;justify-content:flex-end;gap:8px">
+        <button sc-camel-on-click="{{ cf.close }}" style="border:1px solid #E2DBD3;background:#fff;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700">Cancelar</button>
+        <button sc-camel-on-click="{{ cf.save }}" style="border:0;background:#C41F27;color:#fff;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:800" style-hover="background:#A8181F">Salvar categoria</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1A17;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:60">{{ toast }}</div>
+</sc-if>
+<sc-if value="{{ dt.open }}" hint-placeholder-val="{{ false }}">
+  <div sc-camel-on-click="{{ dt.close }}" style="position:fixed;inset:0;background:rgba(31,26,23,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50">
+    <div sc-camel-on-click="{{ dt.stop }}" style="background:#fff;border-radius:16px;width:100%;max-width:1060px;height:min(90vh,820px);display:grid;grid-template-columns:minmax(230px,0.7fr) minmax(0,1.3fr);overflow:hidden">
+      <div style="display:flex;flex-direction:column;min-height:0;border-right:1px solid #F1ECE6">
+        <div style="padding:18px 20px;border-bottom:1px solid #F1ECE6;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <strong style="font-size:20px;font-weight:800">Pedido #{{ dt.num }}</strong>
+            <span style="margin-left:auto;font-size:13px;color:#7A7068;font-weight:600">{{ dt.time }}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:800;border-radius:6px;padding:4px 8px;background:#FDECEC;color:#C41F27">{{ dt.typeLabel }}</span>
+            <span style="font-size:11px;font-weight:800;border-radius:6px;padding:4px 8px;background:#F4F0EB;color:#4A423C">{{ dt.statusLabel }}</span>
+          </div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:18px">
+          <sc-if value="{{ dt.hasStatuses }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Status</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ dt.statuses }}" as="b" hint-placeholder-count="3">
+                  <button sc-camel-on-click="{{ b.go }}" style="border:1.5px solid {{ b.bd }};background:{{ b.bg }};color:{{ b.fg }};border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700">{{ b.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Itens</span>
+            <sc-for list="{{ dt.items }}" as="it" hint-placeholder-count="2">
+              <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #F4F0EB">
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:14px;font-weight:600">{{ it.t }}</span>
+                  <sc-if value="{{ it.hasMod }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#C41F27">{{ it.mod }}</span></sc-if>
+                </div>
+                <span style="font-size:14px;font-weight:700;white-space:nowrap">{{ it.v }}</span>
+              </div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6E655E;padding-top:8px"><span>Subtotal</span><span>{{ dt.sub }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6E655E"><span>Entrega</span><span>{{ dt.fee }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding-top:4px"><span>Total</span><span>{{ dt.total }}</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Cliente</span>
+            <span style="font-size:14px">{{ dt.addr }}</span>
+            <span style="font-size:14px;color:#4A423C">{{ dt.cliPhone }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Pagamento</span>
+            <span style="font-size:14px">{{ dt.pay }}</span>
+            <sc-if value="{{ dt.showFiadoBtn }}" hint-placeholder-val="{{ false }}">
+              <button sc-camel-on-click="{{ dt.fiadoToggle }}" style="align-self:flex-start;border:{{ dt.fiadoBtnBd }};background:{{ dt.fiadoBtnBg }};color:{{ dt.fiadoBtnFg }};border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700">{{ dt.fiadoBtn }}</button>
+            </sc-if>
+          </div>
+          <sc-if value="{{ dt.showMotos }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Motoboy</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ dt.motos }}" as="m" hint-placeholder-count="2">
+                  <button sc-camel-on-click="{{ m.go }}" style="border:1.5px solid {{ m.bd }};background:{{ m.bg }};color:{{ m.fg }};border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700">{{ m.name }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;min-height:0;background:#F4F0EB">
+        <div style="padding:12px 16px;background:#fff;border-bottom:1px solid #ECE6DF;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <strong style="font-size:14px;font-weight:800">Comanda impressa</strong>
+          <button sc-camel-on-click="{{ dt.toggleAdv }}" style="margin-left:auto;border:1px solid #E2DBD3;background:#fff;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700">{{ dt.advLabel }}</button>
+          <button sc-camel-on-click="{{ dt.close }}" style="border:0;background:none;width:32px;height:32px;border-radius:8px;font-size:20px;color:#7A7068" style-hover="background:#F4F0EB">×</button>
+        </div>
+        <div style="flex:1;min-height:0;display:flex">
+          <sc-if value="{{ dt.adv }}" hint-placeholder-val="{{ false }}">
+            <div style="width:200px;flex:none;background:#fff;border-right:1px solid #ECE6DF;overflow:auto;padding:14px 14px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Papel</span>
+                <div style="display:flex;background:#F4F0EB;border-radius:8px;padding:3px;gap:2px">
+                  <sc-for list="{{ dt.papers }}" as="p" hint-placeholder-count="2">
+                    <button sc-camel-on-click="{{ p.go }}" style="flex:1;border:0;border-radius:6px;padding:7px 0;font-size:12px;font-weight:700;background:{{ p.bg }};color:{{ p.fg }};box-shadow:{{ p.sh }}">{{ p.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Tamanho da fonte</span>
+                <div style="display:flex;align-items:center;border:1px solid #E2DBD3;border-radius:8px">
+                  <button sc-camel-on-click="{{ dt.sizeDown }}" style="border:0;background:none;width:40px;height:36px;font-size:13px;font-weight:800">A−</button>
+                  <span style="flex:1;text-align:center;font-size:14px;font-weight:700">{{ dt.size }}</span>
+                  <button sc-camel-on-click="{{ dt.sizeUp }}" style="border:0;background:none;width:40px;height:36px;font-size:16px;font-weight:800">A+</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Informações impressas</span>
+                <sc-for list="{{ dt.toggles }}" as="t" hint-placeholder-count="8">
+                  <button sc-camel-on-click="{{ t.go }}" style="border:0;background:none;padding:7px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:600;color:#1F1A17;text-align:left">
+                    <span>{{ t.label }}</span>
+                    <span style="flex:none;width:34px;height:20px;border-radius:999px;background:{{ t.tg }};position:relative"><span style="position:absolute;top:2px;left:{{ t.kx }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s"></span></span>
+                  </button>
+                </sc-for>
+              </div>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Mensagem de rodapé
+                <input value="{{ dt.footer }}" sc-camel-on-change="{{ dt.onFooter }}" placeholder="Ex: Obrigado!" style="border:1px solid #E2DBD3;border-radius:8px;padding:8px 10px;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:#1F1A17">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#7A7068;text-transform:uppercase;letter-spacing:.04em">Observação (só esta impressão)
+                <textarea value="{{ dt.obs }}" sc-camel-on-change="{{ dt.onObs }}" rows="2" placeholder="Ex: Cliente pediu bem passado" style="border:1px solid #E2DBD3;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;text-transform:none;letter-spacing:0;font-weight:500;color:#1F1A17;resize:vertical"></textarea>
+              </label>
+              <button sc-camel-on-click="{{ dt.reset }}" style="align-self:flex-start;border:0;background:none;padding:0;font-size:12px;font-weight:700;color:#C41F27">Restaurar padrão</button>
+              <span style="font-size:11px;color:#9A9089;line-height:1.4">Os ajustes ficam salvos para as próximas impressões.</span>
+            </div>
+          </sc-if>
+          <div style="flex:1;min-width:0;overflow:auto;padding:24px 12px;display:flex;justify-content:safe center;align-items:flex-start">
+            <div style="width:{{ dt.r.w }};flex:none;background:#fff;box-shadow:0 2px 10px rgba(31,26,23,.12);padding:28px 16px 48px;font-family:'IBM Plex Mono',monospace;font-size:{{ dt.r.fs }};line-height:1.6;color:#111;box-sizing:border-box">
+              <sc-if value="{{ dt.r.sLoja }}" hint-placeholder-val="{{ true }}"><div style="text-align:center;font-weight:700;font-size:{{ dt.r.fsBig }};line-height:1.15">MAU MAU LANCHES</div></sc-if>
+              <sc-if value="{{ dt.r.sEnd }}" hint-placeholder-val="{{ true }}"><div style="text-align:center;font-size:{{ dt.r.fsSm }};margin-top:8px">R. Vinte de Setembro, 1151<br>Parque 35 · Guaíba-RS</div></sc-if>
+              <div style="border-top:1px dashed #2A2420;margin:16px 0"></div>
+              <div style="text-align:center;font-weight:700;font-size:{{ dt.r.fsBig }};line-height:1.2">PEDIDO #{{ dt.num }}</div>
+              <sc-if value="{{ dt.r.sData }}" hint-placeholder-val="{{ true }}"><div style="text-align:center;font-size:{{ dt.r.fsSm }}">{{ dt.r.date }}</div></sc-if>
+              <sc-if value="{{ dt.r.sTipo }}" hint-placeholder-val="{{ true }}"><div style="text-align:center;font-weight:700;margin-top:10px;border:1.5px solid #111;padding:4px 0">{{ dt.r.tipo }}</div></sc-if>
+              <sc-if value="{{ dt.r.sCli }}" hint-placeholder-val="{{ true }}">
+                <div style="border-top:1px dashed #2A2420;margin:16px 0"></div>
+                <div>{{ dt.r.cliAddr }}</div><div style="font-weight:700">Bairro: {{ dt.r.cliBairro }}</div>
+              </sc-if>
+              <sc-if value="{{ dt.r.sPhone }}" hint-placeholder-val="{{ false }}"><div>Tel: {{ dt.r.phone }}</div></sc-if>
+              <div style="border-top:1px dashed #2A2420;margin:16px 0"></div>
+              <sc-for list="{{ dt.r.items }}" as="it" hint-placeholder-count="2">
+                <div style="margin-bottom:12px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="min-width:0;font-size:{{ dt.r.fsItem }};font-weight:{{ dt.r.itemW }};line-height:1.25">{{ it.t }}</span><sc-if value="{{ dt.r.sPreco }}" hint-placeholder-val="{{ true }}"><span style="white-space:nowrap;font-size:{{ dt.r.fsSm }}">{{ it.v }}</span></sc-if></div>
+                  <sc-if value="{{ it.showMod }}" hint-placeholder-val="{{ false }}"><div style="padding-left:12px;font-size:{{ dt.r.fs }};font-weight:600">&gt; {{ it.mod }}</div></sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ dt.r.hasObs }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px dashed #2A2420;margin:16px 0"></div><div style="font-weight:700">OBS: {{ dt.r.obs }}</div>
+              </sc-if>
+              <sc-if value="{{ dt.r.sTot }}" hint-placeholder-val="{{ true }}">
+                <div style="border-top:1px dashed #2A2420;margin:16px 0"></div>
+                <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>{{ dt.r.sub }}</span></div>
+                <div style="display:flex;justify-content:space-between"><span>Entrega</span><span>{{ dt.r.fee }}</span></div>
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:{{ dt.r.fsTotal }};line-height:1.3;margin-top:2px"><span>TOTAL</span><span>{{ dt.r.total }}</span></div>
+              </sc-if>
+              <sc-if value="{{ dt.r.sPag }}" hint-placeholder-val="{{ true }}">
+                <div style="border-top:1px dashed #2A2420;margin:16px 0"></div>
+                <div style="display:flex;justify-content:space-between"><span>Pagamento</span><span style="font-weight:700">{{ dt.r.pay }}</span></div>
+                <sc-if value="{{ dt.r.isFiado }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;justify-content:space-between"><span>Cliente</span><span style="font-weight:700">{{ dt.r.fiadoName }}</span></div>
+                  <div style="margin-top:28px;border-top:1px solid #111"></div>
+                  <div style="text-align:center;font-size:{{ dt.r.fsSm }}">Assinatura</div>
+                </sc-if>
+                <sc-if value="{{ dt.r.hasChange }}" hint-placeholder-val="{{ false }}"><div style="display:flex;justify-content:space-between"><span>Troco</span><span style="font-weight:700">{{ dt.r.change }}</span></div></sc-if>
+              </sc-if>
+              <sc-if value="{{ dt.r.sRod }}" hint-placeholder-val="{{ true }}">
+                <div style="border-top:1px dashed #2A2420;margin:16px 0"></div><div style="text-align:center;font-size:{{ dt.r.fsSm }}">{{ dt.r.footer }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+        <div style="padding:12px 16px;background:#fff;border-top:1px solid #ECE6DF;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+          <button sc-camel-on-click="{{ dt.print }}" style="border:0;background:#C41F27;color:#fff;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:800" style-hover="background:#A8181F">Imprimir comanda</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script>const Component = window.createMauMauComponent(DCLogic);</script>
+
+
+</body></html>
