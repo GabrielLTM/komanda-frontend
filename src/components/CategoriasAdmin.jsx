@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function CategoriasAdmin({
   categories,
@@ -7,23 +8,50 @@ export default function CategoriasAdmin({
   products,
   onOpenNewCategory,
   onEditCategory,
+  backendOnline,
+  showToast,
 }) {
   const activeCount = categories.filter((c) => c.active !== false).length;
   const inactiveCount = categories.filter((c) => c.active === false).length;
 
-  const moveCategory = (index, offset) => {
+  const moveCategory = async (index, offset) => {
     const target = index + offset;
     if (target < 0 || target >= categories.length) return;
     const newCats = [...categories];
     [newCats[index], newCats[target]] = [newCats[target], newCats[index]];
     setCategories(newCats);
+
+    if (backendOnline) {
+      try {
+        await api.reordenarCategorias(newCats.map((c) => c.id));
+      } catch (err) {
+        showToast && showToast('Erro ao reordenar: ' + err.message);
+      }
+    }
   };
 
-  const toggleCategoryActive = (id) => {
+  const toggleCategoryActive = async (id) => {
+    const cat = categories.find((c) => c.id === id);
+    if (!cat) return;
+    const novoAtivo = cat.active !== false ? false : true;
+
     setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, active: c.active === false ? true : false } : c))
+      prev.map((c) => (c.id === id ? { ...c, active: novoAtivo } : c))
     );
+
+    if (backendOnline) {
+      try {
+        await api.updateCategoria(id, { ativo: novoAtivo });
+      } catch (err) {
+        // Reverte em caso de erro
+        setCategories((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, active: !novoAtivo } : c))
+        );
+        showToast && showToast('Erro ao atualizar categoria: ' + err.message);
+      }
+    }
   };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

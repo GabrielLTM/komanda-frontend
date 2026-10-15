@@ -13,6 +13,7 @@ import OrderDetailModal from './components/OrderDetailModal';
 import CategoryModal from './components/CategoryModal';
 import ProductModal from './components/ProductModal';
 import Toast from './components/Toast';
+import { api } from './services/api';
 
 import {
   INITIAL_CATEGORIES,
@@ -26,6 +27,9 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState('pedido');
   const [waitMinutes, setWaitMinutes] = useState('40');
+
+  // Estado do backend
+  const [backendOnline, setBackendOnline] = useState(false);
 
   // Entities state
   const [categories, setCategories] = useState(INITIAL_CATEGORIES);
@@ -51,6 +55,32 @@ export default function App() {
       setToastMessage(null);
     }, 2800);
   };
+
+  // Carregar categorias do backend na inicialização
+  useEffect(() => {
+    api.health()
+      .then((ok) => {
+        if (!ok) return;
+        setBackendOnline(true);
+        return api.getCategorias();
+      })
+      .then((data) => {
+        if (!data) return; // backend offline, usa dados locais
+        // Mapeia resposta do backend para o formato do frontend
+        const mapped = data.map((c) => ({
+          id: c.id,
+          name: c.nome,
+          active: c.ativo,
+          ordem: c.ordem,
+        }));
+        // Ordena por campo `ordem` vindo do banco
+        mapped.sort((a, b) => a.ordem - b.ordem);
+        setCategories(mapped);
+      })
+      .catch(() => {
+        // Backend inacessível — mantém dados locais
+      });
+  }, []);
 
   // Keyboard shortcuts (F1 = Novo pedido, F2 = Cardápio, Esc = fechar modais)
   useEffect(() => {
@@ -101,18 +131,35 @@ export default function App() {
   };
 
   // Category modal actions
-  const handleSaveCategory = (catData) => {
-    if (catData.id) {
-      // Edit
-      setCategories((prev) =>
-        prev.map((c) => (c.id === catData.id ? { ...c, name: catData.name } : c))
-      );
-      showToast('Categoria atualizada com sucesso');
-    } else {
-      // Create
-      const newId = Math.max(0, ...categories.map((c) => c.id)) + 1;
-      setCategories((prev) => [...prev, { id: newId, name: catData.name, active: true }]);
-      showToast('Categoria criada com sucesso');
+  const handleSaveCategory = async (catData) => {
+    try {
+      if (catData.id) {
+        // Edit
+        if (backendOnline) {
+          const updated = await api.updateCategoria(catData.id, { nome: catData.name });
+          setCategories((prev) =>
+            prev.map((c) => (c.id === updated.id ? { ...c, name: updated.nome, active: updated.ativo } : c))
+          );
+        } else {
+          setCategories((prev) =>
+            prev.map((c) => (c.id === catData.id ? { ...c, name: catData.name } : c))
+          );
+        }
+        showToast('Categoria atualizada com sucesso');
+      } else {
+        // Create
+        if (backendOnline) {
+          const ordem = categories.length + 1;
+          const created = await api.createCategoria({ nome: catData.name, ordem });
+          setCategories((prev) => [...prev, { id: created.id, name: created.nome, active: created.ativo, ordem: created.ordem }]);
+        } else {
+          const newId = Math.max(0, ...categories.map((c) => c.id)) + 1;
+          setCategories((prev) => [...prev, { id: newId, name: catData.name, active: true }]);
+        }
+        showToast('Categoria criada com sucesso');
+      }
+    } catch (err) {
+      showToast('Erro ao salvar categoria: ' + err.message);
     }
     setCategoryModal({ open: false, category: null });
   };
@@ -212,6 +259,8 @@ export default function App() {
             products={products}
             onOpenNewCategory={() => setCategoryModal({ open: true, category: null })}
             onEditCategory={(cat) => setCategoryModal({ open: true, category: cat })}
+            backendOnline={backendOnline}
+            showToast={showToast}
           />
         )}
 
