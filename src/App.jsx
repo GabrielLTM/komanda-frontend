@@ -5,7 +5,6 @@ import QuadroPedidos from './components/QuadroPedidos';
 import CardapioAdmin from './components/CardapioAdmin';
 import ConsultaCardapio from './components/ConsultaCardapio';
 import CategoriasAdmin from './components/CategoriasAdmin';
-import EstoqueAdmin from './components/EstoqueAdmin';
 import MotoboysAdmin from './components/MotoboysAdmin';
 import BairrosAdmin from './components/BairrosAdmin';
 import CaixaRelatorios from './components/CaixaRelatorios';
@@ -16,7 +15,6 @@ import Toast from './components/Toast';
 import { api } from './services/api';
 
 import {
-  INITIAL_INVENTORY,
   INITIAL_ORDERS,
 } from './data/initialData';
 
@@ -34,7 +32,6 @@ export default function App() {
   // Entities state
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY);
   const [motoboys, setMotoboys] = useState([]);
   const [bairros, setBairros] = useState([]);
   const [orders, setOrders] = useState(INITIAL_ORDERS);
@@ -263,7 +260,7 @@ export default function App() {
     showToast('Motoboy excluído.');
   });
 
-  const demoTabs = ['pedido', 'quadro', 'estoque', 'caixa'];
+  const demoTabs = ['pedido', 'quadro', 'caixa'];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '210px minmax(0, 1fr)', minHeight: '100vh' }}>
@@ -281,7 +278,7 @@ export default function App() {
         {isLoading && <div role="status" style={{ padding: '8px 12px', color: '#4A423C' }}>Carregando cadastros do servidor…</div>}
         {loadError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}><span>{loadError}</span><button type="button" onClick={loadData} disabled={isLoading}>Tentar novamente</button></div>}
         {mutationError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px' }}>{mutationError}</div>}
-        {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Demonstração local: pedidos, quadro, estoque e caixa ainda não são gravados no servidor.</div>}
+        {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Demonstração local: pedidos, quadro e caixa ainda não são gravados no servidor.</div>}
         {activeTab === 'pedido' && (
           <NovoPedido
             products={products}
@@ -334,13 +331,6 @@ export default function App() {
             onToggleCategory={handleToggleCategory}
             onReorderCategories={handleReorderCategories}
             onDeleteCategory={handleDeleteCategory}
-          />
-        )}
-
-        {activeTab === 'estoque' && (
-          <EstoqueAdmin
-            inventory={inventory}
-            setInventory={setInventory}
           />
         )}
 

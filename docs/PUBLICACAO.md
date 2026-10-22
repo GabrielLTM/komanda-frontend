@@ -26,7 +26,7 @@ O schema e os índices são preparados explicitamente com `prisma db push`, conf
 
 ## Verificação realizada
 
-Em 22/10/2026, `/health` da API retornou 200. Foram criados uma categoria e um produto pela interface pública, recuperados após recarga e conferidos na API. Somente os dois registros de verificação foram removidos ao final. Categorias, produtos, ingredientes/adicionais, bairros e motoboys usam a API; pedidos, quadro, estoque, caixa e acerto continuam demonstrativos.
+Em 22/10/2026, `/health` da API retornou 200. Foram criados uma categoria e um produto pela interface pública, recuperados após recarga e conferidos na API. Somente os dois registros de verificação foram removidos ao final. Categorias, produtos, ingredientes/adicionais, bairros e motoboys usam a API; pedidos, quadro, caixa e acerto continuam demonstrativos. Estoque foi excluído do escopo do MVP por decisão do responsável em 22/10/2026 e não aparece na navegação ou nos avisos de funcionalidades pendentes da entrega inicial.
 
 ## Referências
 

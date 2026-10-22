@@ -15,7 +15,8 @@
 | Domain / scope | Authoritative source | Source type | Reviewed date |
 |---|---|---|---|
 | Catalog and API fields | `compatibilidade-mau-mau.md`, integration planning artifact | API / product brief | 2026-10-22 |
-| Orders, inventory, and settlement availability | `compatibilidade-mau-mau.md`, integration planning artifact | Product brief | 2026-10-22 |
+| Orders and settlement availability | `compatibilidade-mau-mau.md`, integration planning artifact | Product brief | 2026-10-22 |
+| Inventory outside the initial MVP | Explicit user scope decision in this conversation on 2026-10-22 | Current product decision | 2026-10-22 |
 | Permission, deletion retention, billing, legal | Not specified by this frontend integration | Not applicable | 2026-10-22 |
 
 The plan is the task's authoritative integration brief. API behavior is also checked against the backend contract and real local API during integration smoke tests; frontend code does not infer persistence guarantees from demo screens.
@@ -64,6 +65,7 @@ The plan is the task's authoritative integration brief. API behavior is also che
 ## Navigation and responsive behavior
 
 - Tab navigation stays inside the single-page shell. The initial source layout has a 210px rail and main content that scrolls naturally.
+- Inventory is outside the MVP: it has no navigation item, rendered tab, or pending-delivery warning. Existing inventory source code is retained for a possible later phase; it is not mounted by the app.
 - Modal content is bounded by the viewport and can scroll internally; save/cancel actions remain reachable.
 - Long row actions wrap on narrow screens instead of being hidden.
 
@@ -79,7 +81,7 @@ The plan is the task's authoritative integration brief. API behavior is also che
 - A shared mutation lock prevents duplicate writes from overlapping controls.
 - Offline reads show an error with a retry control; mutation failures preserve form data and surface the backend message.
 - Startup request sequences prevent an older StrictMode/retry response from overwriting the latest result.
-- Orders, stock, cash, courier settlement, and reset remain clearly marked demonstrations/unavailable; they do not issue partial backend mutations.
+- Orders, cash, courier settlement, and reset remain clearly marked demonstrations/unavailable; they do not issue partial backend mutations. Inventory is excluded from the MVP rather than presented as a pending feature.
 
 ## Validation
 

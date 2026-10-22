@@ -47,7 +47,7 @@ docs/              origem do código e publicação
 
 ## Estado da integração importada
 
-A versão de origem já consulta e mantém categorias e produtos pelo backend. Algumas operações ainda preservam dados somente na memória da aplicação ou utilizam os dados de demonstração quando o backend está indisponível. Bairros, motoboys, pedidos, estoque e caixa precisam ser avaliados separadamente antes de serem considerados persistidos no servidor.
+A versão atual mantém categorias, produtos, ingredientes/adicionais, bairros e motoboys pela API. Pedidos, quadro, caixa e acerto continuam demonstrativos. Estoque está fora do MVP e não aparece na navegação da entrega inicial; seu código de origem permanece preservado para uma eventual etapa futura.
 
 O objetivo da importação inicial é preservar o código fornecido. Ajustes de compatibilidade e evolução das funcionalidades devem ser revisados em alterações separadas, sem incluir uma cópia do backend neste repositório.
 
