@@ -6,6 +6,8 @@ export default function Toast({ message }) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         position: 'fixed',
         bottom: '24px',

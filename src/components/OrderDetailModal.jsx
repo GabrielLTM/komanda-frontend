@@ -398,11 +398,12 @@ export default function OrderDetailModal({
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#7A7068', textTransform: 'uppercase' }}>
                   Observação (só nesta via)
                   <textarea
+                    className="resize-none"
                     value={obs}
                     onChange={(e) => setObs(e.target.value)}
                     rows={2}
                     placeholder="Ex: Ponto da carne bem passado"
-                    style={{ border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', textTransform: 'none', resize: 'vertical' }}
+                    style={{ border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', textTransform: 'none', resize: 'none', minHeight: '64px' }}
                   ></textarea>
                 </label>
               </div>

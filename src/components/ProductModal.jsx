@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
+import useAccessibleDialog from '../hooks/useAccessibleDialog';
 
 export default function ProductModal({
   productToEdit,
@@ -8,23 +9,25 @@ export default function ProductModal({
   onSave,
   onDelete,
   onAddCategory,
+  error: serverError = '',
 }) {
   const [name, setName] = useState(productToEdit ? productToEdit.name : '');
   const [desc, setDesc] = useState(productToEdit ? productToEdit.desc || '' : '');
   const [price, setPrice] = useState(productToEdit ? String(productToEdit.price).replace('.', ',') : '');
   const [catId, setCatId] = useState(
-    productToEdit ? productToEdit.catId : (categories.find((c) => c.active !== false) || {}).id || 1
+    productToEdit ? productToEdit.catId : (categories.find((c) => c.active !== false) || {}).id || ''
   );
   const [isCreatingNewCat, setIsCreatingNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { dialogRef, onKeyDown } = useAccessibleDialog(() => { if (!saving) onClose(); });
 
   const cleanName = name.trim();
   const parsedPrice = parseFloat(String(price).replace(',', '.'));
   const isPriceValid = !isNaN(parsedPrice) && parsedPrice > 0;
 
-  let activeCatId = catId;
   const isCategoryValid = isCreatingNewCat
     ? !!newCatName.trim()
     : categories.some((c) => c.id === catId && c.active !== false);
@@ -67,7 +70,10 @@ export default function ProductModal({
 
   const handleDelete = async () => {
     if (saving) return;
-    if (!window.confirm(`Excluir "${productToEdit.name}" do cardápio? Esta ação não pode ser desfeita.`)) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
     setSaving(true);
     try {
       await onDelete(productToEdit);
@@ -77,8 +83,8 @@ export default function ProductModal({
   };
 
   return (
-    <div
-      onClick={onClose}
+      <div
+      onClick={saving ? undefined : onClose}
       style={{
         position: 'fixed',
         inset: 0,
@@ -91,6 +97,11 @@ export default function ProductModal({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-dialog-title"
+        ref={dialogRef}
+        onKeyDown={onKeyDown}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: '#fff',
@@ -106,10 +117,12 @@ export default function ProductModal({
       >
         {/* Header */}
         <div style={{ padding: '18px 22px', borderBottom: '1px solid #F1ECE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <strong style={{ fontSize: '18px', fontWeight: 800 }}>
+          <strong id="product-dialog-title" style={{ fontSize: '18px', fontWeight: 800 }}>
             {productToEdit ? 'Editar produto' : 'Novo item no cardápio'}
           </strong>
           <button
+            type="button"
+            disabled={saving}
             onClick={onClose}
             style={{ border: 0, background: 'none', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
@@ -120,10 +133,12 @@ export default function ProductModal({
         {/* Body Form */}
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Nome */}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>
+          <label htmlFor="product-name" style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>
             Nome do item
             <input
+              id="product-name"
               value={name}
+              autoFocus
               onChange={(e) => {
                 setName(e.target.value);
                 setTried(false);
@@ -154,6 +169,7 @@ export default function ProductModal({
                     <button
                       key={c.id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => {
                         setCatId(c.id);
                         setIsCreatingNewCat(false);
@@ -195,6 +211,8 @@ export default function ProductModal({
 
             {isCreatingNewCat && (
               <input
+                id="new-category-name"
+                aria-label="Nome da nova categoria"
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 placeholder="Nome da nova categoria (ex: Pastéis)"
@@ -213,11 +231,13 @@ export default function ProductModal({
 
           {/* Preço e Descrição */}
           <div style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', gap: '12px' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>
+            <label htmlFor="product-price" style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>
               Preço
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', border: priceError ? '1px solid #C41F27' : '1px solid #E2DBD3', borderRadius: '8px', padding: '0 12px', height: '43px' }}>
                 <span style={{ color: '#9A9089', fontWeight: 500 }}>R$</span>
                 <input
+                  id="product-price"
+                  aria-label="Preço do produto"
                   value={price}
                   onChange={(e) => {
                     setPrice(e.target.value);
@@ -231,9 +251,11 @@ export default function ProductModal({
               {priceError && <span style={{ fontSize: '12px', fontWeight: 400, color: '#C41F27' }}>{priceError}</span>}
             </label>
 
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>
+            <label htmlFor="product-description" style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>
               Descrição
               <input
+                id="product-description"
+                aria-label="Descrição do produto"
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 placeholder="Ingredientes, tamanho…"
@@ -245,26 +267,31 @@ export default function ProductModal({
           <span style={{ fontSize: '12px', color: '#7A7068' }}>
             Acompanhamentos e adicionais podem ser cadastrados depois, na linha do item.
           </span>
+          {serverError && <p role="alert" style={{ margin: 0, color: '#8C141B', background: '#FFF0F0', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '10px 12px', fontSize: '13px' }}>{serverError}</p>}
         </div>
 
         {/* Actions */}
         <div style={{ padding: '16px 22px', borderTop: '1px solid #F1ECE6', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
           {productToEdit && (
             <button
+              type="button"
               onClick={handleDelete}
               disabled={saving}
               style={{ marginRight: 'auto', border: '1px solid #E2C2C3', background: '#fff', color: '#C41F27', borderRadius: '10px', padding: '11px 16px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <Trash2 size={15} /> Excluir
+              <Trash2 size={15} /> {confirmDelete ? 'Confirmar exclusão' : 'Excluir'}
             </button>
           )}
           <button
+            type="button"
+            disabled={saving}
             onClick={onClose}
             style={{ border: '1px solid #E2DBD3', background: '#fff', borderRadius: '10px', padding: '11px 18px', fontSize: '14px', fontWeight: 700 }}
           >
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             style={{ border: 0, background: '#C41F27', color: '#fff', borderRadius: '10px', padding: '11px 20px', fontSize: '14px', fontWeight: 800, opacity: saving ? 0.6 : 1 }}

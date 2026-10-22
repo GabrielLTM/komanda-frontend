@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import NovoPedido from './components/NovoPedido';
 import QuadroPedidos from './components/QuadroPedidos';
@@ -16,48 +16,27 @@ import Toast from './components/Toast';
 import { api } from './services/api';
 
 import {
-  INITIAL_CATEGORIES,
-  INITIAL_PRODUCTS,
   INITIAL_INVENTORY,
-  INITIAL_MOTOBOYS,
-  INITIAL_BAIRROS,
   INITIAL_ORDERS,
 } from './data/initialData';
-
-// Mapeia um produto do backend para o formato usado pelos componentes.
-// O backend ainda não guarda acompanhamentos (ings) nem adicionais (extras).
-const mapProdutoDaApi = (p) => ({
-  id: p.id,
-  catId: p.categoria ? p.categoria.id : p.categoriaId,
-  name: p.nome,
-  price: Number(p.preco),
-  desc: p.descricao || '',
-  active: p.ativo,
-  ings: [],
-  extras: [],
-});
-
-// Corpo de criação/edição de produto no formato do backend.
-const produtoParaApi = (prod) => ({
-  nome: prod.name,
-  descricao: prod.desc || null,
-  preco: prod.price,
-  categoriaId: prod.catId,
-});
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('pedido');
   const [waitMinutes, setWaitMinutes] = useState('40');
 
-  // Estado do backend
-  const [backendOnline, setBackendOnline] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [mutationBusy, setMutationBusy] = useState(false);
+  const [mutationError, setMutationError] = useState('');
+  const mutationLock = useRef(false);
+  const loadSequence = useRef(0);
 
   // Entities state
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
   const [inventory, setInventory] = useState(INITIAL_INVENTORY);
-  const [motoboys, setMotoboys] = useState(INITIAL_MOTOBOYS);
-  const [bairros, setBairros] = useState(INITIAL_BAIRROS);
+  const [motoboys, setMotoboys] = useState([]);
+  const [bairros, setBairros] = useState([]);
   const [orders, setOrders] = useState(INITIAL_ORDERS);
 
   // Cart & Order state
@@ -77,40 +56,45 @@ export default function App() {
     }, 2800);
   };
 
-  // Carregar categorias e produtos do backend na inicialização
-  useEffect(() => {
-    api.health()
-      .then((ok) => {
-        if (!ok) return; // backend offline, usa dados locais
-        setBackendOnline(true);
+  const loadData = async () => {
+    const sequence = ++loadSequence.current;
+    setIsLoading(true);
+    setLoadError('');
+    try {
+      const [online, cats, prods, mb, areas] = await Promise.all([
+        api.health(), api.getCategorias(), api.getProdutos(), api.getMotoboys(), api.getBairros(),
+      ]);
+      if (sequence !== loadSequence.current) return;
+      if (!online) throw new Error('O servidor não está disponível. Tente novamente.');
+      setCategories(cats.sort((a, b) => a.ordem - b.ordem));
+      setProducts(prods);
+      setMotoboys(mb);
+      setBairros(areas);
+    } catch (err) {
+      if (sequence === loadSequence.current) setLoadError(err.message || 'Não foi possível carregar os cadastros.');
+    } finally {
+      if (sequence === loadSequence.current) setIsLoading(false);
+    }
+  };
 
-        api.getCategorias()
-          .then((data) => {
-            // Mapeia resposta do backend para o formato do frontend
-            const mapped = data.map((c) => ({
-              id: c.id,
-              name: c.nome,
-              active: c.ativo,
-              ordem: c.ordem,
-            }));
-            // Ordena por campo `ordem` vindo do banco
-            mapped.sort((a, b) => a.ordem - b.ordem);
-            setCategories(mapped);
-          })
-          .catch(() => {
-            // Falha ao carregar — mantém categorias locais
-          });
+  useEffect(() => { loadData(); }, []);
 
-        api.getProdutos()
-          .then((data) => setProducts(data.map(mapProdutoDaApi)))
-          .catch(() => {
-            // Falha ao carregar — mantém produtos locais
-          });
-      })
-      .catch(() => {
-        // Backend inacessível — mantém dados locais
-      });
-  }, []);
+  const runMutation = async (action) => {
+    if (mutationLock.current) return false;
+    mutationLock.current = true;
+    setMutationBusy(true);
+    setMutationError('');
+    try {
+      await action();
+      return true;
+    } catch (err) {
+      setMutationError(err.message || 'Não foi possível salvar. Tente novamente.');
+      return false;
+    } finally {
+      mutationLock.current = false;
+      setMutationBusy(false);
+    }
+  };
 
   // Keyboard shortcuts (F1 = Novo pedido, F2 = Cardápio, Esc = fechar modais)
   useEffect(() => {
@@ -131,12 +115,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Finishing an order
-  const handleFinishOrder = (orderDoc) => {
-    setOrders((prev) => [...prev, { ...orderDoc, status: 'prod' }]);
-    setCart([]);
-    setOrderNum((prev) => prev + 1);
-    showToast('Pedido enviado para a cozinha');
+  const handleFinishOrder = () => {
+    showToast('O registro de pedidos ainda não está disponível; a comanda foi mantida como rascunho.');
+    return false;
   };
 
   // Opening detail/print preview for an existing order or cart
@@ -160,125 +141,129 @@ export default function App() {
     }
   };
 
-  // Category modal actions
   const handleSaveCategory = async (catData) => {
-    try {
+    return runMutation(async () => {
       if (catData.id) {
-        // Edit
-        if (backendOnline) {
-          const updated = await api.updateCategoria(catData.id, { nome: catData.name });
-          setCategories((prev) =>
-            prev.map((c) => (c.id === updated.id ? { ...c, name: updated.nome, active: updated.ativo } : c))
-          );
-        } else {
-          setCategories((prev) =>
-            prev.map((c) => (c.id === catData.id ? { ...c, name: catData.name } : c))
-          );
-        }
-        showToast('Categoria atualizada com sucesso');
+        const updated = await api.updateCategoria(catData.id, { name: catData.name });
+        setCategories((prev) => prev.map((category) => category.id === updated.id ? updated : category).sort((a, b) => a.ordem - b.ordem));
+        showToast('Categoria atualizada com sucesso.');
       } else {
-        // Create
-        if (backendOnline) {
-          const ordem = categories.length + 1;
-          const created = await api.createCategoria({ nome: catData.name, ordem });
-          setCategories((prev) => [...prev, { id: created.id, name: created.nome, active: created.ativo, ordem: created.ordem }]);
-        } else {
-          const newId = Math.max(0, ...categories.map((c) => c.id)) + 1;
-          setCategories((prev) => [...prev, { id: newId, name: catData.name, active: true }]);
-        }
-        showToast('Categoria criada com sucesso');
+        const created = await api.createCategoria({ name: catData.name, ordem: categories.length + 1 });
+        setCategories((prev) => [...prev, created].sort((a, b) => a.ordem - b.ordem));
+        showToast('Categoria criada com sucesso.');
       }
-    } catch (err) {
-      showToast('Erro ao salvar categoria: ' + err.message);
-    }
-    setCategoryModal({ open: false, category: null });
+      setCategoryModal({ open: false, category: null });
+    });
   };
 
-  // Product modal actions
   const handleSaveProduct = async (prodData) => {
-    try {
+    return runMutation(async () => {
       if (prodData.id) {
-        // Edit
-        if (backendOnline) {
-          const updated = await api.updateProduto(prodData.id, produtoParaApi(prodData));
-          // Acompanhamentos e adicionais só existem no frontend por enquanto
-          setProducts((prev) =>
-            prev.map((p) =>
-              p.id === updated.id ? { ...mapProdutoDaApi(updated), ings: prodData.ings, extras: prodData.extras } : p
-            )
-          );
-        } else {
-          setProducts((prev) =>
-            prev.map((p) => (p.id === prodData.id ? prodData : p))
-          );
-        }
-        showToast('Produto atualizado com sucesso');
+        const updated = await api.updateProduto(prodData.id, prodData);
+        setProducts((prev) => prev.map((product) => product.id === updated.id ? updated : product));
+        showToast('Produto atualizado com sucesso.');
       } else {
-        // Create
-        if (backendOnline) {
-          const created = await api.createProduto(produtoParaApi(prodData));
-          setProducts((prev) => [...prev, mapProdutoDaApi(created)]);
-        } else {
-          const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
-          setProducts((prev) => [...prev, { ...prodData, id: newId }]);
-        }
-        showToast('Produto cadastrado com sucesso');
+        const created = await api.createProduto(prodData);
+        setProducts((prev) => [...prev, created]);
+        showToast('Produto cadastrado com sucesso.');
       }
-    } catch (err) {
-      // Mantém o modal aberto para o usuário corrigir os dados
-      showToast('Erro ao salvar produto: ' + err.message);
-      return;
-    }
-    setProductModal({ open: false, product: null });
+      setProductModal({ open: false, product: null });
+    });
   };
 
   const handleDeleteProduct = async (prod) => {
-    try {
-      if (backendOnline) {
-        await api.deleteProduto(prod.id);
-      }
-      setProducts((prev) => prev.filter((p) => p.id !== prod.id));
-      showToast('Produto excluído');
-    } catch (err) {
-      showToast('Erro ao excluir produto: ' + err.message);
-      return;
-    }
-    setProductModal({ open: false, product: null });
+    return runMutation(async () => {
+      await api.deleteProduto(prod.id);
+      setProducts((prev) => prev.filter((product) => product.id !== prod.id));
+      setProductModal({ open: false, product: null });
+      showToast('Produto excluído.');
+    });
   };
 
-  // Devolve o id da categoria, ou null se não conseguiu criá-la no backend
   const handleAddCategoryFromProduct = async (categoryName) => {
     const existing = categories.find(
       (c) => c.name.trim().toLowerCase() === categoryName.trim().toLowerCase()
     );
-    try {
+    let resultId = null;
+    const saved = await runMutation(async () => {
       if (existing) {
         if (existing.active === false) {
-          if (backendOnline) {
-            await api.updateCategoria(existing.id, { ativo: true });
-          }
-          setCategories((prev) =>
-            prev.map((c) => (c.id === existing.id ? { ...c, active: true } : c))
-          );
+          const updated = await api.updateCategoria(existing.id, { active: true });
+          setCategories((prev) => prev.map((category) => category.id === updated.id ? updated : category));
         }
-        return existing.id;
+        resultId = existing.id;
+        return;
       }
-      if (backendOnline) {
-        const ordem = categories.length + 1;
-        const created = await api.createCategoria({ nome: categoryName.trim(), ordem });
-        setCategories((prev) => [...prev, { id: created.id, name: created.nome, active: created.ativo, ordem: created.ordem }]);
-        return created.id;
-      }
-    } catch (err) {
-      showToast('Erro ao salvar categoria: ' + err.message);
-      return null;
-    }
-    const newId = Math.max(0, ...categories.map((c) => c.id)) + 1;
-    setCategories((prev) => [...prev, { id: newId, name: categoryName.trim(), active: true }]);
-    return newId;
+      const created = await api.createCategoria({ name: categoryName.trim(), ordem: categories.length + 1 });
+      setCategories((prev) => [...prev, created].sort((a, b) => a.ordem - b.ordem));
+      resultId = created.id;
+    });
+    return saved ? resultId : null;
   };
 
-  const activeOrdersCount = orders.filter((o) => o.status !== 'done').length;
+  const handleToggleCategory = (id) => runMutation(async () => {
+    const category = categories.find((item) => item.id === id);
+    if (!category) throw new Error('Categoria não encontrada. Atualize a lista e tente novamente.');
+    const updated = await api.updateCategoria(id, { active: category.active === false });
+    setCategories((prev) => prev.map((item) => item.id === id ? updated : item));
+    showToast(updated.active ? 'Categoria ativada.' : 'Categoria desativada.');
+  });
+
+  const handleReorderCategories = (ids) => runMutation(async () => {
+    const updated = await api.reordenarCategorias(ids);
+    setCategories(updated.sort((a, b) => a.ordem - b.ordem));
+    showToast('Ordem das categorias atualizada.');
+  });
+
+  const handleDeleteCategory = (id) => runMutation(async () => {
+    await api.deleteCategoria(id);
+    setCategories((prev) => prev.filter((item) => item.id !== id));
+    showToast('Categoria excluída.');
+  });
+
+  const handlePatchProduct = (id, changes) => runMutation(async () => {
+    const updated = await api.updateProduto(id, changes);
+    setProducts((prev) => prev.map((item) => item.id === id ? updated : item));
+    showToast('Produto atualizado.');
+  });
+
+  const handleCreateBairro = (data) => runMutation(async () => {
+    const created = await api.createBairro(data);
+    setBairros((prev) => [...prev, created]);
+    showToast('Bairro cadastrado com sucesso.');
+  });
+
+  const handleUpdateBairro = (id, data) => runMutation(async () => {
+    const updated = await api.updateBairro(id, data);
+    setBairros((prev) => prev.map((item) => item.id === id ? updated : item));
+    showToast('Bairro atualizado.');
+  });
+
+  const handleDeleteBairro = (id) => runMutation(async () => {
+    await api.deleteBairro(id);
+    setBairros((prev) => prev.filter((item) => item.id !== id));
+    showToast('Bairro excluído.');
+  });
+
+  const handleCreateMotoboy = (data) => runMutation(async () => {
+    const created = await api.createMotoboy(data);
+    setMotoboys((prev) => [...prev, created]);
+    showToast('Motoboy cadastrado com sucesso.');
+  });
+
+  const handleUpdateMotoboy = (id, data) => runMutation(async () => {
+    const updated = await api.updateMotoboy(id, data);
+    setMotoboys((prev) => prev.map((item) => item.id === id ? updated : item));
+    showToast('Cadastro de motoboy atualizado.');
+  });
+
+  const handleDeleteMotoboy = (id) => runMutation(async () => {
+    await api.deleteMotoboy(id);
+    setMotoboys((prev) => prev.filter((item) => item.id !== id));
+    showToast('Motoboy excluído.');
+  });
+
+  const demoTabs = ['pedido', 'quadro', 'estoque', 'caixa'];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '210px minmax(0, 1fr)', minHeight: '100vh' }}>
@@ -286,13 +271,17 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        ordersCount={activeOrdersCount}
+        ordersCount={0}
         waitMinutes={waitMinutes}
         setWaitMinutes={setWaitMinutes}
       />
 
       {/* Main Content Area */}
       <main style={{ padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0, flex: 1 }}>
+        {isLoading && <div role="status" style={{ padding: '8px 12px', color: '#4A423C' }}>Carregando cadastros do servidor…</div>}
+        {loadError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}><span>{loadError}</span><button type="button" onClick={loadData} disabled={isLoading}>Tentar novamente</button></div>}
+        {mutationError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px' }}>{mutationError}</div>}
+        {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Demonstração local: pedidos, quadro, estoque e caixa ainda não são gravados no servidor.</div>}
         {activeTab === 'pedido' && (
           <NovoPedido
             products={products}
@@ -303,6 +292,7 @@ export default function App() {
             orderNum={orderNum}
             onFinishOrder={handleFinishOrder}
             onPreviewCart={handlePreviewCart}
+            orderPersistenceAvailable={false}
           />
         )}
 
@@ -318,12 +308,11 @@ export default function App() {
         {activeTab === 'cardapio' && (
           <CardapioAdmin
             products={products}
-            setProducts={setProducts}
             categories={categories}
             onOpenNewProduct={() => setProductModal({ open: true, product: null })}
             onEditProduct={(prod) => setProductModal({ open: true, product: prod })}
-            backendOnline={backendOnline}
-            showToast={showToast}
+            busy={mutationBusy}
+            onPatchProduct={handlePatchProduct}
           />
         )}
 
@@ -337,12 +326,14 @@ export default function App() {
         {activeTab === 'categorias' && (
           <CategoriasAdmin
             categories={categories}
-            setCategories={setCategories}
             products={products}
             onOpenNewCategory={() => setCategoryModal({ open: true, category: null })}
             onEditCategory={(cat) => setCategoryModal({ open: true, category: cat })}
-            backendOnline={backendOnline}
-            showToast={showToast}
+            busy={mutationBusy}
+            error={mutationError}
+            onToggleCategory={handleToggleCategory}
+            onReorderCategories={handleReorderCategories}
+            onDeleteCategory={handleDeleteCategory}
           />
         )}
 
@@ -356,16 +347,24 @@ export default function App() {
         {activeTab === 'motoboy' && (
           <MotoboysAdmin
             motoboys={motoboys}
-            setMotoboys={setMotoboys}
-            orders={orders}
             bairros={bairros}
+            busy={mutationBusy}
+            error={mutationError}
+            defaultDailyFee={0}
+            onCreate={handleCreateMotoboy}
+            onUpdate={handleUpdateMotoboy}
+            onDelete={handleDeleteMotoboy}
           />
         )}
 
         {activeTab === 'bairros' && (
           <BairrosAdmin
             bairros={bairros}
-            setBairros={setBairros}
+            busy={mutationBusy}
+            error={mutationError}
+            onCreate={handleCreateBairro}
+            onUpdate={handleUpdateBairro}
+            onDelete={handleDeleteBairro}
           />
         )}
 
@@ -393,6 +392,8 @@ export default function App() {
           categories={categories}
           onClose={() => setCategoryModal({ open: false, category: null })}
           onSave={handleSaveCategory}
+          busy={mutationBusy}
+          error={mutationError}
         />
       )}
 
@@ -404,6 +405,7 @@ export default function App() {
           onSave={handleSaveProduct}
           onDelete={handleDeleteProduct}
           onAddCategory={handleAddCategoryFromProduct}
+          error={mutationError}
         />
       )}
 

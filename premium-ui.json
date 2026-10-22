@@ -1,0 +1,14 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["src"],
+  "locale": "pt-BR",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast", "CRUD"],
+  "ownership": { "Select/Listbox": "native" },
+  "requiredCommands": ["unit", "build"],
+  "commands": { "unit": "npm test", "build": "npm run build" },
+  "evidence": {
+    "crudFullFlow": "tests/api.test.js",
+    "failurePaths": "tests/api.test.js"
+  }
+}

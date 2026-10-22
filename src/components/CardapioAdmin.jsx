@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Search, Plus, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { formatMoney } from '../utils/format';
-import { api } from '../services/api';
 
 export default function CardapioAdmin({
   products,
-  setProducts,
   categories,
   onOpenNewProduct,
   onEditProduct,
-  backendOnline,
-  showToast,
+  busy = false,
+  onPatchProduct,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatId, setSelectedCatId] = useState(0);
   const [expandedProductId, setExpandedProductId] = useState(null);
+  const searchRef = useRef(null);
 
   const [newIngInputs, setNewIngInputs] = useState({});
   const [newExNameInputs, setNewExNameInputs] = useState({});
@@ -41,23 +40,7 @@ export default function CardapioAdmin({
   const handleToggleProductActive = async (id) => {
     const prod = products.find((p) => p.id === id);
     if (!prod) return;
-    const novoAtivo = !prod.active;
-
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, active: novoAtivo } : p))
-    );
-
-    if (backendOnline) {
-      try {
-        await api.updateProduto(id, { ativo: novoAtivo });
-      } catch (err) {
-        // Reverte em caso de erro
-        setProducts((prev) =>
-          prev.map((p) => (p.id === id ? { ...p, active: !novoAtivo } : p))
-        );
-        showToast && showToast('Erro ao atualizar produto: ' + err.message);
-      }
-    }
+    await onPatchProduct(id, { active: !prod.active });
   };
 
   const handlePriceChange = async (id, newPriceStr) => {
@@ -65,69 +48,39 @@ export default function CardapioAdmin({
     const parsed = parseFloat(newPriceStr.replace(',', '.'));
     if (!prod || isNaN(parsed) || parsed <= 0 || parsed === prod.price) return;
 
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, price: parsed } : p))
-    );
-
-    if (backendOnline) {
-      try {
-        await api.updateProduto(id, { preco: parsed });
-      } catch (err) {
-        // Reverte em caso de erro
-        setProducts((prev) =>
-          prev.map((p) => (p.id === id ? { ...p, price: prod.price } : p))
-        );
-        showToast && showToast('Erro ao atualizar preço: ' + err.message);
-      }
-    }
+    await onPatchProduct(id, { price: parsed });
   };
 
-  const handleAddIngredient = (productId) => {
+  const handleAddIngredient = async (productId) => {
     const ingName = (newIngInputs[productId] || '').trim();
     if (!ingName) return;
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== productId) return p;
-        if (p.ings && p.ings.includes(ingName)) return p;
-        return { ...p, ings: [...(p.ings || []), ingName] };
-      })
-    );
-    setNewIngInputs((prev) => ({ ...prev, [productId]: '' }));
+    const product = products.find((p) => p.id === productId);
+    if (!product || product.ings.includes(ingName)) return;
+    if (await onPatchProduct(productId, { ings: [...product.ings, ingName] })) setNewIngInputs((prev) => ({ ...prev, [productId]: '' }));
   };
 
-  const handleDeleteIngredient = (productId, ingName) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== productId) return p;
-        return { ...p, ings: (p.ings || []).filter((i) => i !== ingName) };
-      })
-    );
+  const handleDeleteIngredient = async (productId, ingName) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) await onPatchProduct(productId, { ings: product.ings.filter((i) => i !== ingName) });
   };
 
-  const handleAddExtra = (productId) => {
+  const handleAddExtra = async (productId) => {
     const exName = (newExNameInputs[productId] || '').trim();
     const exPriceStr = newExPriceInputs[productId] || '';
     const exPrice = parseFloat(exPriceStr.replace(',', '.'));
     if (!exName || isNaN(exPrice)) return;
 
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== productId) return p;
-        if (p.extras && p.extras.some((e) => e[0] === exName)) return p;
-        return { ...p, extras: [...(p.extras || []), [exName, exPrice]] };
-      })
-    );
-    setNewExNameInputs((prev) => ({ ...prev, [productId]: '' }));
-    setNewExPriceInputs((prev) => ({ ...prev, [productId]: '' }));
+    const product = products.find((p) => p.id === productId);
+    if (!product || product.extras.some((e) => e[0] === exName)) return;
+    if (await onPatchProduct(productId, { extras: [...product.extras, [exName, exPrice]] })) {
+      setNewExNameInputs((prev) => ({ ...prev, [productId]: '' }));
+      setNewExPriceInputs((prev) => ({ ...prev, [productId]: '' }));
+    }
   };
 
-  const handleDeleteExtra = (productId, extraName) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== productId) return p;
-        return { ...p, extras: (p.extras || []).filter((e) => e[0] !== extraName) };
-      })
-    );
+  const handleDeleteExtra = async (productId, extraName) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) await onPatchProduct(productId, { extras: product.extras.filter((e) => e[0] !== extraName) });
   };
 
   return (
@@ -144,6 +97,8 @@ export default function CardapioAdmin({
           <div style={{ position: 'relative' }}>
             <Search size={16} color="#9A9089" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
+              ref={searchRef}
+              aria-label="Buscar no cardápio"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar no cardápio"
@@ -157,6 +112,7 @@ export default function CardapioAdmin({
                 outline: 'none',
               }}
             />
+            {searchTerm && <button type="button" aria-label="Limpar busca do cardápio" onClick={() => { setSearchTerm(''); searchRef.current?.focus(); }} style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', padding: '5px', display: 'flex', color: '#7A7068' }}><X size={15} /></button>}
           </div>
           <button
             onClick={onOpenNewProduct}
@@ -186,6 +142,8 @@ export default function CardapioAdmin({
           const isSelected = selectedCatId === c.id;
           return (
             <button
+              type="button"
+              disabled={busy}
               key={c.id}
               onClick={() => setSelectedCatId(c.id)}
               style={{
@@ -237,6 +195,8 @@ export default function CardapioAdmin({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                     <strong style={{ fontSize: '14px', minWidth: 0 }}>{p.name}</strong>
                     <button
+                      type="button"
+                      disabled={busy}
                       onClick={() => onEditProduct(p)}
                       style={{
                         border: '1px solid #E2DBD3',
@@ -270,6 +230,8 @@ export default function CardapioAdmin({
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E2DBD3', borderRadius: '8px', padding: '0 10px', height: '36px', fontSize: '14px', fontWeight: 700, gap: '4px' }}>
                   <span style={{ color: '#9A9089', fontWeight: 500 }}>R$</span>
                   <input
+                    aria-label={`Preço de ${p.name}`}
+                    disabled={busy}
                     key={p.price}
                     defaultValue={p.price.toFixed(2).replace('.', ',')}
                     onBlur={(e) => handlePriceChange(p.id, e.target.value)}
@@ -283,6 +245,9 @@ export default function CardapioAdmin({
 
                 {/* Companions & Extras accordion toggle */}
                 <button
+                  type="button"
+                  disabled={busy}
+                  aria-label={`${isExpanded ? 'Recolher' : 'Editar'} acompanhamentos e adicionais de ${p.name}`}
                   onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
                   style={{
                     border: '1px solid #E2DBD3',
@@ -306,6 +271,10 @@ export default function CardapioAdmin({
 
                 {/* À venda Switch */}
                 <button
+                  type="button"
+                  disabled={busy}
+                  aria-label={`${p.active ? 'Pausar' : 'Ativar'} ${p.name}`}
+                  aria-pressed={p.active}
                   onClick={() => handleToggleProductActive(p.id)}
                   style={{
                     border: 0,
@@ -358,6 +327,9 @@ export default function CardapioAdmin({
                       >
                         {ing}
                         <button
+                          type="button"
+                          disabled={busy}
+                          aria-label={`Remover ${ing} de ${p.name}`}
                           onClick={() => handleDeleteIngredient(p.id, ing)}
                           style={{
                             border: 0,
@@ -383,6 +355,8 @@ export default function CardapioAdmin({
                   </div>
                   <div style={{ display: 'flex', gap: '8px', maxWidth: '360px' }}>
                     <input
+                      aria-label={`Novo acompanhamento de ${p.name}`}
+                      disabled={busy}
                       value={newIngInputs[p.id] || ''}
                       onChange={(e) => setNewIngInputs({ ...newIngInputs, [p.id]: e.target.value })}
                       onKeyDown={(e) => {
@@ -392,6 +366,8 @@ export default function CardapioAdmin({
                       style={{ flex: 1, minWidth: 0, border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px' }}
                     />
                     <button
+                      type="button"
+                      disabled={busy}
                       onClick={() => handleAddIngredient(p.id)}
                       style={{ border: 0, background: '#1F1A17', color: '#fff', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700 }}
                     >
@@ -424,6 +400,9 @@ export default function CardapioAdmin({
                           +{formatMoney(extraPrice)}
                         </span>
                         <button
+                          type="button"
+                          disabled={busy}
+                          aria-label={`Remover adicional ${extraName} de ${p.name}`}
                           onClick={() => handleDeleteExtra(p.id, extraName)}
                           style={{
                             border: 0,
@@ -449,18 +428,24 @@ export default function CardapioAdmin({
                   </div>
                   <div style={{ display: 'flex', gap: '8px', maxWidth: '420px' }}>
                     <input
+                      aria-label={`Nome do adicional de ${p.name}`}
+                      disabled={busy}
                       value={newExNameInputs[p.id] || ''}
                       onChange={(e) => setNewExNameInputs({ ...newExNameInputs, [p.id]: e.target.value })}
                       placeholder="Novo adicional"
                       style={{ flex: 1, minWidth: 0, border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px' }}
                     />
                     <input
+                      aria-label={`Preço do adicional de ${p.name}`}
+                      disabled={busy}
                       value={newExPriceInputs[p.id] || ''}
                       onChange={(e) => setNewExPriceInputs({ ...newExPriceInputs, [p.id]: e.target.value })}
                       placeholder="R$ 0,00"
                       style={{ width: '80px', border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px' }}
                     />
                     <button
+                      type="button"
+                      disabled={busy}
                       onClick={() => handleAddExtra(p.id)}
                       style={{ border: 0, background: '#1F1A17', color: '#fff', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700 }}
                     >

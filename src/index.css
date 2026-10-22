@@ -54,6 +54,12 @@
   box-sizing: border-box;
 }
 
+*:focus-visible {
+  /* Legacy controls set outline:none inline; retain a visible keyboard ring over those styles. */
+  outline: 3px solid #C41F27 !important;
+  outline-offset: 2px;
+}
+
 body {
   margin: 0;
   background: #F7F5F2;
@@ -80,7 +86,15 @@ input, select, textarea {
   font-family: inherit;
 }
 
-/* Custom Scrollbar */
+.resize-none {
+  resize: none;
+}
+
+/* Shared warm scrollbar: standards baseline plus WebKit geometry fallback. */
+html {
+  scrollbar-color: #B8B0A5 #F1ECE6;
+  scrollbar-width: thin;
+}
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -94,4 +108,9 @@ input, select, textarea {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #B8B0A5;
+}
+
+@media (forced-colors: active) {
+  html { scrollbar-color: auto; }
+  *:focus-visible { outline-color: Highlight !important; }
 }
