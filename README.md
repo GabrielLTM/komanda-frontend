@@ -4,7 +4,7 @@ Aplicação de atendimento e gestão da **Mau Mau Lanches**, desenvolvida com Re
 
 Este repositório reúne **somente o frontend** do trabalho de [Diego Rosa](https://github.com/diego-rosa), originalmente publicado em [projeto_mau_mau_lanches_teste](https://github.com/diego-rosa/projeto_mau_mau_lanches_teste). As telas, os estilos e a integração existente foram preservados. O histórico importado contém apenas arquivos do frontend; também foram mantidos os ajustes locais existentes na cópia fornecida. Veja [a origem da importação](docs/ORIGEM.md).
 
-O backend é mantido separadamente em [komanda-backend](https://github.com/4nnahermes/komanda-backend).
+O backend é mantido separadamente em [komanda-backend](https://github.com/GabrielLTM/komanda-backend).
 
 ## Executar localmente
 
@@ -53,9 +53,9 @@ O objetivo da importação inicial é preservar o código fornecido. Ajustes de 
 
 ## Publicação
 
-A organização prevista é **frontend e API na Vercel, com banco no Supabase**. Consulte [o guia de publicação](docs/PUBLICACAO.md).
+O frontend e a API estão publicados na **Vercel, com banco MongoDB Atlas e persistência Prisma**. Frontend: https://komanda-frontend.vercel.app. API: https://komanda-backend.vercel.app. Consulte [o guia de publicação](docs/PUBLICACAO.md).
 
-A variável `VITE_API_URL` contém somente a URL pública da API. Credenciais e conexão do Supabase pertencem exclusivamente ao backend.
+A variável `VITE_API_URL` contém somente a URL pública da API. Credenciais e conexão do Atlas pertencem exclusivamente ao backend.
 
 ## Contribuir
 

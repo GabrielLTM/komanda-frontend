@@ -1,45 +1,35 @@
-# Publicação — Vercel e Supabase
+# Publicação — Vercel e MongoDB Atlas
 
-## Componentes
-
-| Parte | Serviço | Repositório/configuração |
+| Parte | Serviço | Endereço |
 |---|---|---|
-| Frontend React/Vite | Vercel | `GabrielLTM/komanda-frontend` |
-| API Node.js/Express | Vercel | `4nnahermes/komanda-backend` — publicação pela responsável do repositório |
-| Banco PostgreSQL | Supabase | conexão configurada somente no backend |
+| Frontend React/Vite | Vercel | https://komanda-frontend.vercel.app |
+| API Express/Prisma | Vercel | https://komanda-backend.vercel.app |
+| Banco MongoDB | Atlas | conexão secreta somente no backend |
 
-Este guia descreve a configuração. Criar o repositório não publica automaticamente a aplicação.
+Repositórios próprios: `GabrielLTM/komanda-frontend` e `GabrielLTM/komanda-backend`. A cópia do backend foi migrada para Prisma/MongoDB; o backend original da equipe e o Supabase não foram modificados. O histórico e a autoria original foram preservados.
 
-## Backend na Vercel
+## Configuração do frontend
 
-A responsável pelo backend deve importar o repositório da API na Vercel após revisar e incorporar as alterações necessárias. A Vercel suporta Express como função Node.js; a entrada precisa exportar a aplicação no formato esperado e inicializar a conexão com o banco antes das rotas que precisam dele. Consulte as instruções da versão do backend que será publicada.
+Projeto Vercel `komanda-frontend`, raiz do repositório, preset Vite, instalação `npm ci`, build `npm run build`, saída `dist`. Variável pública em Production:
 
-Configure `DATABASE_URL` no painel da Vercel com a conexão PostgreSQL do Supabase. Use a conexão adequada à execução serverless, copiada do painel do Supabase, com o pool configurado no backend. Não coloque essa conexão no frontend ou no Git. Não é necessário criar outro banco.
+```text
+VITE_API_URL=https://komanda-backend.vercel.app/api
+```
 
-As migrations precisam ser aplicadas pelo fluxo controlado do backend antes de validar os cadastros. Não as execute no banco da equipe apenas para testar a importação do frontend.
+O prefixo `/api` é obrigatório. Essa variável é incorporada ao build; após alterá-la, publicar novamente. O adaptador deriva `/health` da origem da API. O proxy Vite só é usado no desenvolvimento; `API_PROXY_TARGET` permite escolher a API local.
 
-Após publicar a API, confira `https://SEU-BACKEND.vercel.app/health`.
+## Configuração do backend
 
-## Frontend na Vercel
+Projeto Vercel `komanda-backend`, Node 24 e Express. `DATABASE_URL` contém a conexão Atlas com nome do banco `komanda`, somente no backend. Ela nunca deve ser copiada para variáveis VITE_, código, documentação ou Git.
 
-Importe `GabrielLTM/komanda-frontend` e selecione Vite:
+O schema e os índices são preparados explicitamente com `prisma db push`, conforme o guia do backend. A preparação inicial já foi realizada em 22/10/2026; depois o build foi restaurado para `npm run build`, sem mudanças automáticas no banco. Novas alterações de schema devem seguir o procedimento controlado do backend, sem reset ou aceitação automática de perda de dados.
 
-- Diretório raiz: raiz do repositório.
-- Instalação: `npm ci`.
-- Build: `npm run build`.
-- Diretório de saída: `dist`.
-- Variável de ambiente: `VITE_API_URL=https://SEU-BACKEND.vercel.app/api`.
+## Verificação realizada
 
-A URL inclui `/api`. Variáveis `VITE_` são incorporadas ao frontend durante o build; configure o endereço antes de publicar e refaça o deploy quando ele mudar. O adaptador usa essa URL nas requisições e deriva dela a origem para verificar `/health`. O proxy do Vite é usado somente no desenvolvimento; para a API local, configure `API_PROXY_TARGET` (por exemplo, `http://127.0.0.1:3017`).
-
-Confira também as origens permitidas no CORS da API.
-
-## Verificação depois da publicação
-
-Abra a URL pública do frontend e confirme se categorias, produtos, bairros e motoboys vieram da API. Teste criar/editar/ativar/excluir esses cadastros e recarregue para conferir a persistência de ingredientes e adicionais do cardápio. Pedidos, quadro, estoque, caixa e acerto continuam sendo demonstrações locais e não comprovam conexão com o Supabase.
+Em 22/10/2026, `/health` da API retornou 200. Foram criados uma categoria e um produto pela interface pública, recuperados após recarga e conferidos na API. Somente os dois registros de verificação foram removidos ao final. Categorias, produtos, ingredientes/adicionais, bairros e motoboys usam a API; pedidos, quadro, estoque, caixa e acerto continuam demonstrativos.
 
 ## Referências
 
 - [Vite na Vercel](https://vercel.com/docs/frameworks/frontend/vite).
 - [Express na Vercel](https://vercel.com/docs/frameworks/backend/express).
-- [Conexão PostgreSQL do Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres).
+- [Prisma com MongoDB](https://www.prisma.io/docs/orm/v6/overview/databases/mongodb).
