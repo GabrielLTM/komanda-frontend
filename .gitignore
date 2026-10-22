@@ -1,0 +1,20 @@
+# Dependências e builds
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Configurações locais
+.env
+.env.*
+!.env.example
+*.local
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+
+# O backend pertence ao repositório próprio
+komanda-backend/
