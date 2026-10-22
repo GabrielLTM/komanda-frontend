@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Plus, Minus, Printer, Send } from 'lucide-react';
 import { formatMoney, formatPhone } from '../utils/format';
 
@@ -11,11 +11,12 @@ export default function NovoPedido({
   orderNum,
   onFinishOrder,
   onPreviewCart,
+  orderPersistenceAvailable = false,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatId, setSelectedCatId] = useState(0); // 0 = Todos
   const [orderType, setOrderType] = useState('delivery'); // 'delivery' | 'balcao'
-  const [selectedBairro, setSelectedBairro] = useState('Parque 35');
+  const [selectedBairroId, setSelectedBairroId] = useState('');
   const [street, setStreet] = useState('');
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('PIX');
@@ -23,6 +24,15 @@ export default function NovoPedido({
   const [fiadoName, setFiadoName] = useState('');
   const [fiadoError, setFiadoError] = useState(false);
   const [openCustomLineKey, setOpenCustomLineKey] = useState(null);
+
+  useEffect(() => {
+    const activeAreas = bairros.filter((b) => b.active);
+    if (!activeAreas.some((b) => String(b.id) === selectedBairroId)) {
+      setSelectedBairroId(activeAreas[0] ? String(activeAreas[0].id) : '');
+    }
+  }, [bairros, selectedBairroId]);
+
+  const selectedBairro = bairros.find((b) => String(b.id) === selectedBairroId);
 
   const activeCategoryIds = new Set(categories.filter((c) => c.active !== false).map((c) => c.id));
   const activeCategoriesList = [{ id: 0, name: 'Todos' }, ...categories.filter((c) => c.active !== false)];
@@ -114,7 +124,7 @@ export default function NovoPedido({
   const subtotal = cart.reduce((sum, l) => sum + l.qty * getLineUnitPrice(l), 0);
   const deliveryFee =
     orderType === 'delivery'
-      ? (bairros.find((b) => b.name === selectedBairro) || { fee: 0 }).fee
+      ? (selectedBairro?.fee || 0)
       : 0;
   const grandTotal = subtotal + deliveryFee;
   const changeValue =
@@ -135,7 +145,7 @@ export default function NovoPedido({
       num: orderNum,
       time: orderTime,
       type: orderType,
-      bairro: orderType === 'delivery' ? selectedBairro : '',
+      bairro: orderType === 'delivery' ? selectedBairro?.name || '' : '',
       street: orderType === 'delivery' ? street : '',
       phone: phone,
       cash: cashGiven,
@@ -158,7 +168,7 @@ export default function NovoPedido({
       }),
     };
 
-    onFinishOrder(orderDoc);
+    if (onFinishOrder(orderDoc) === false) return;
 
     setStreet('');
     setPhone('');
@@ -175,7 +185,7 @@ export default function NovoPedido({
       num: orderNum,
       time: orderTime,
       type: orderType,
-      bairro: orderType === 'delivery' ? selectedBairro : '',
+      bairro: orderType === 'delivery' ? selectedBairro?.name || '' : '',
       street: orderType === 'delivery' ? street : '',
       phone: phone,
       cash: cashGiven,
@@ -561,8 +571,9 @@ export default function NovoPedido({
           {orderType === 'delivery' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <select
-                value={selectedBairro}
-                onChange={(e) => setSelectedBairro(e.target.value)}
+                aria-label="Bairro de entrega"
+                value={selectedBairroId}
+                onChange={(e) => setSelectedBairroId(e.target.value)}
                 style={{
                   border: '1px solid #E2DBD3',
                   borderRadius: '8px',
@@ -572,10 +583,8 @@ export default function NovoPedido({
                   outline: 'none',
                 }}
               >
-                {bairros
-                  .filter((b) => b.active || b.name === selectedBairro)
-                  .map((b) => (
-                    <option key={b.id || b.name} value={b.name}>
+                {bairros.filter((b) => b.active).map((b) => (
+                    <option key={b.id} value={String(b.id)}>
                       {b.name} · {formatMoney(b.fee)}
                     </option>
                   ))}
@@ -595,6 +604,7 @@ export default function NovoPedido({
               />
             </div>
           )}
+          {orderType === 'delivery' && !selectedBairro && <p role="status" style={{ gridColumn: '1 / -1', margin: 0, color: '#7A5A00', fontSize: '12px' }}>Cadastre ou ative um bairro para selecionar a entrega.</p>}
 
           {/* Payment Methods */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '5px' }}>
@@ -706,10 +716,10 @@ export default function NovoPedido({
 
           <button
             onClick={handleFinish}
-            disabled={cart.length === 0}
+            disabled={cart.length === 0 || !orderPersistenceAvailable || (orderType === 'delivery' && !selectedBairro)}
             style={{
               border: 0,
-              background: cart.length > 0 ? '#C41F27' : '#D6CFC7',
+              background: cart.length > 0 && orderPersistenceAvailable ? '#C41F27' : '#D6CFC7',
               color: '#fff',
               borderRadius: '10px',
               padding: '15px 18px',
@@ -718,12 +728,12 @@ export default function NovoPedido({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              cursor: cart.length > 0 ? 'pointer' : 'not-allowed',
+              cursor: cart.length > 0 && orderPersistenceAvailable ? 'pointer' : 'not-allowed',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Send size={16} />
-              <span>{cart.length > 0 ? 'Enviar pedido' : 'Adicione itens'}</span>
+              <span>{!orderPersistenceAvailable ? 'Registro indisponível' : cart.length > 0 ? 'Enviar pedido' : 'Adicione itens'}</span>
             </div>
             <span>{formatMoney(grandTotal)}</span>
           </button>

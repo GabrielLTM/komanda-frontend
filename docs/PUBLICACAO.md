@@ -30,13 +30,13 @@ Importe `GabrielLTM/komanda-frontend` e selecione Vite:
 - Diretório de saída: `dist`.
 - Variável de ambiente: `VITE_API_URL=https://SEU-BACKEND.vercel.app/api`.
 
-A URL inclui `/api`. Variáveis `VITE_` são incorporadas ao frontend durante o build; configure o endereço antes de publicar e refaça o deploy quando ele mudar. O proxy do Vite é usado somente no desenvolvimento.
+A URL inclui `/api`. Variáveis `VITE_` são incorporadas ao frontend durante o build; configure o endereço antes de publicar e refaça o deploy quando ele mudar. O adaptador usa essa URL nas requisições e deriva dela a origem para verificar `/health`. O proxy do Vite é usado somente no desenvolvimento; para a API local, configure `API_PROXY_TARGET` (por exemplo, `http://127.0.0.1:3017`).
 
-Na versão importada, a verificação de saúde usa `/health` na própria origem. A integração entre domínios separados precisa ajustar essa verificação para a URL do backend antes da homologação. Confira também as origens permitidas no CORS da API.
+Confira também as origens permitidas no CORS da API.
 
 ## Verificação depois da publicação
 
-Abra a URL pública do frontend e confirme se categorias e produtos vieram da API. Crie ou edite um dado de teste autorizado, recarregue e confira a persistência. Dados de demonstração da versão original não comprovam conexão com o Supabase.
+Abra a URL pública do frontend e confirme se categorias, produtos, bairros e motoboys vieram da API. Teste criar/editar/ativar/excluir esses cadastros e recarregue para conferir a persistência de ingredientes e adicionais do cardápio. Pedidos, quadro, estoque, caixa e acerto continuam sendo demonstrações locais e não comprovam conexão com o Supabase.
 
 ## Referências
 
