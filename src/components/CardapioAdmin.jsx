@@ -1,8 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { formatMoney } from '../utils/format';
 
 export default function CardapioAdmin({
+  initialExpandedProductId = null,
+  onReturnToOrder,
   products,
   categories,
   onOpenNewProduct,
@@ -12,8 +14,20 @@ export default function CardapioAdmin({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatId, setSelectedCatId] = useState(0);
-  const [expandedProductId, setExpandedProductId] = useState(null);
+  const [expandedProductId, setExpandedProductId] = useState(initialExpandedProductId);
   const searchRef = useRef(null);
+  const expandedRowRef = useRef(null);
+  useEffect(() => {
+    if (initialExpandedProductId === null) return;
+    setExpandedProductId(initialExpandedProductId);
+    setSearchTerm('');
+    setSelectedCatId(0);
+  }, [initialExpandedProductId]);
+  useEffect(() => {
+    if (expandedProductId !== initialExpandedProductId) return;
+    expandedRowRef.current?.scrollIntoView({ block: 'nearest' });
+    expandedRowRef.current?.querySelector('input')?.focus({ preventScroll: true });
+  }, [expandedProductId, initialExpandedProductId]);
 
   const [newIngInputs, setNewIngInputs] = useState({});
   const [newExNameInputs, setNewExNameInputs] = useState({});
@@ -85,6 +99,7 @@ export default function CardapioAdmin({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {onReturnToOrder && <button type="button" onClick={onReturnToOrder} className="customization-configure" style={{ alignSelf: 'flex-start' }}>Voltar ao pedido</button>}
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -176,7 +191,7 @@ export default function CardapioAdmin({
           const isExpanded = expandedProductId === p.id;
           const ingsCount = p.ings ? p.ings.length : 0;
           const extrasCount = p.extras ? p.extras.length : 0;
-          const acompLabel = `${ingsCount ? `${ingsCount} acomp.` : 'Nenhum'}${extrasCount ? ` · ${extrasCount} adic.` : ''}`;
+          const acompLabel = ingsCount || extrasCount ? `${ingsCount} acomp. · ${extrasCount} adic.` : 'Configurar opções';
 
           return (
             <div key={p.id} style={{ borderTop: '1px solid #F1ECE6' }}>
@@ -247,6 +262,8 @@ export default function CardapioAdmin({
                 <button
                   type="button"
                   disabled={busy}
+                  aria-expanded={isExpanded}
+                  aria-controls={`product-options-${p.id}`}
                   aria-label={`${isExpanded ? 'Recolher' : 'Editar'} acompanhamentos e adicionais de ${p.name}`}
                   onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
                   style={{
@@ -304,7 +321,7 @@ export default function CardapioAdmin({
 
               {/* Accordion Content */}
               {isExpanded && (
-                <div style={{ padding: '4px 18px 16px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#FAFAFA' }}>
+                <div id={`product-options-${p.id}`} ref={expandedRowRef} style={{ padding: '4px 18px 16px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#FAFAFA' }}>
                   {/* Acompanhamentos */}
                   <span style={{ fontSize: '12px', color: '#7A7068' }}>
                     Acompanhamentos que o atendente pode tirar no pedido

@@ -11,6 +11,7 @@ export default function NovoPedido({
   orderNum,
   onFinishOrder,
   onPreviewCart,
+  onConfigureProduct,
   orderPersistenceAvailable = false,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -212,6 +213,7 @@ export default function NovoPedido({
 
   return (
     <div
+      className="order-layout"
       style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0,1fr) minmax(320px,360px)',
@@ -419,6 +421,7 @@ export default function NovoPedido({
                     {/* Stepper with Lucide */}
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E2DBD3', borderRadius: '8px' }}>
                       <button
+                        aria-label={`Diminuir quantidade de ${product.name}`}
                         onClick={() => handleLineQtyChange(line.key, -1)}
                         style={{ border: 0, background: 'none', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
@@ -428,6 +431,7 @@ export default function NovoPedido({
                         {line.qty}
                       </span>
                       <button
+                        aria-label={`Aumentar quantidade de ${product.name}`}
                         onClick={() => handleLineQtyChange(line.key, 1)}
                         style={{ border: 0, background: 'none', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
@@ -455,8 +459,11 @@ export default function NovoPedido({
                     </span>
                   </div>
 
-                  {canCustomize && (
-                    <button
+                  <button
+                      type="button"
+                      className="customization-trigger"
+                      aria-expanded={isCustomOpen}
+                      aria-controls={`custom-${line.key}`}
                       onClick={() => setOpenCustomLineKey(isCustomOpen ? null : line.key)}
                       style={{
                         alignSelf: 'flex-start',
@@ -471,12 +478,22 @@ export default function NovoPedido({
                       }}
                     >
                       {isCustomOpen ? 'Fechar' : 'Personalizar'}
-                    </button>
-                  )}
+                  </button>
 
                   {/* Customization Accordion */}
                   {isCustomOpen && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#FAF8F5', borderRadius: '8px', padding: '10px' }}>
+                    <div id={`custom-${line.key}`} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#FAF8F5', borderRadius: '8px', padding: '10px' }}>
+                      {!canCustomize && (
+                        <>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#7A7068', lineHeight: 1.5 }}>
+                            Este item ainda não tem acompanhamentos ou adicionais cadastrados.
+                          </p>
+                          <button type="button" onClick={() => onConfigureProduct(product.id)} className="customization-configure">
+                            Configurar no cardápio
+                          </button>
+                        </>
+                      )}
+                      {canCustomize && <span style={{ fontSize: '12px', color: '#7A7068' }}>As escolhas valem para {line.qty === 1 ? 'esta unidade' : `as ${line.qty} unidades`} deste item.</span>}
                       {hasIngredients && (
                         <>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A7068', textTransform: 'uppercase', letterSpacing: '.04em' }}>
@@ -488,6 +505,7 @@ export default function NovoPedido({
                               return (
                                 <button
                                   key={ing}
+                                  aria-pressed={isRemoved}
                                   onClick={() => handleToggleIngredient(line.key, ing)}
                                   style={{
                                     border: isRemoved ? '1px solid #F3B9BC' : '1px solid #E2DBD3',
@@ -519,6 +537,7 @@ export default function NovoPedido({
                               return (
                                 <button
                                   key={extraName}
+                                  aria-pressed={isAdded}
                                   onClick={() => handleToggleExtra(line.key, extraName)}
                                   style={{
                                     border: isAdded ? '1px solid #9BD3A6' : '1px solid #E2DBD3',

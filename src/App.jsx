@@ -20,6 +20,8 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('pedido');
+  const [customizationProductId, setCustomizationProductId] = useState(null);
+  const [returnToOrder, setReturnToOrder] = useState(false);
   const [waitMinutes, setWaitMinutes] = useState('40');
 
   const [isLoading, setIsLoading] = useState(true);
@@ -162,6 +164,7 @@ export default function App() {
       } else {
         const created = await api.createProduto(prodData);
         setProducts((prev) => [...prev, created]);
+        setCustomizationProductId(created.id);
         showToast('Produto cadastrado com sucesso.');
       }
       setProductModal({ open: false, product: null });
@@ -279,7 +282,7 @@ export default function App() {
         {loadError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}><span>{loadError}</span><button type="button" onClick={loadData} disabled={isLoading}>Tentar novamente</button></div>}
         {mutationError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px' }}>{mutationError}</div>}
         {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Demonstração local: pedidos, quadro e caixa ainda não são gravados no servidor.</div>}
-        {activeTab === 'pedido' && (
+        <div hidden={activeTab !== 'pedido'}>
           <NovoPedido
             products={products}
             categories={categories}
@@ -290,8 +293,13 @@ export default function App() {
             onFinishOrder={handleFinishOrder}
             onPreviewCart={handlePreviewCart}
             orderPersistenceAvailable={false}
+            onConfigureProduct={(id) => {
+              setCustomizationProductId(id);
+              setReturnToOrder(true);
+              setActiveTab('cardapio');
+            }}
           />
-        )}
+        </div>
 
         {activeTab === 'quadro' && (
           <QuadroPedidos
@@ -304,6 +312,12 @@ export default function App() {
 
         {activeTab === 'cardapio' && (
           <CardapioAdmin
+            initialExpandedProductId={customizationProductId}
+            onReturnToOrder={returnToOrder ? () => {
+              setReturnToOrder(false);
+              setCustomizationProductId(null);
+              setActiveTab('pedido');
+            } : null}
             products={products}
             categories={categories}
             onOpenNewProduct={() => setProductModal({ open: true, product: null })}

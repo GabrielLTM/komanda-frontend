@@ -127,3 +127,7 @@ Use practical, conversational Brazilian Portuguese, active verbs, BRL currency, 
 - **Do:** Keep the original form values visible when the server rejects a save.
 - **Don't:** Invent neighborhoods, courier settlements, catalog entries, or remote order persistence.
 - **Don't:** replace the source identity with a generic dashboard redesign.
+
+### Personalização da comanda
+
+O HTML original confirma o acordeão na própria linha: fundo dourado claro, chips de retirada com texto riscado em vermelho e adicionais selecionados em verde. Preservar essa linguagem. A ação permanece visível também sem opções, com orientação e acesso direto ao cadastro no cardápio. Em telas menores, catálogo e comanda se empilham para manter os controles acessíveis.

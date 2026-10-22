@@ -114,3 +114,21 @@ html {
   html { scrollbar-color: auto; }
   *:focus-visible { outline-color: Highlight !important; }
 }
+
+.customization-configure {
+  border: 1px solid #C41F27;
+  border-radius: 8px;
+  background: #fff;
+  color: #C41F27;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.customization-configure:hover { background: #FFF0F0; }
+.customization-configure:active { background: #FDECEC; }
+@media (max-width: 1000px) {
+  .order-layout { grid-template-columns: minmax(0, 1fr) !important; }
+  .order-layout > aside { position: static !important; height: auto !important; min-height: 0 !important; }
+}
+
+.customization-trigger:hover { text-decoration: underline; }

@@ -95,3 +95,11 @@ The plan is the task's authoritative integration brief. API behavior is also che
 - **Static commands:** `npm test`, `npm run build`, and the scoped strict premium UI audit.
 - **Browser/API:** Parent task performs the local backend/PostgreSQL create/edit/toggle/reorder/delete, reload-persistence, retry, and failure-preservation smoke tests.
 - **Canonical sibling workflow:** Imported Cardápio and Category modal patterns are preserved and extended with the same service/mutation behavior.
+
+## Personalização de itens
+
+- Referência visual e funcional: HTML original “Mau Mau Lanches - Sistema.html”, revisado em 22/10/2026. Preservar os chips “Tirar” e “Adicionar”, o destaque dourado da linha aberta e o resumo de escolhas na comanda e na prévia.
+- “Personalizar” fica sempre visível na linha da comanda. Sem opções, explicar a ausência e oferecer “Configurar no cardápio”, abrindo os acompanhamentos e adicionais do produto correspondente.
+- Ao voltar ao pedido, preservar comanda, telefone, endereço, pagamento e personalização aberta durante a sessão. A navegação não cria persistência remota de pedidos.
+- O cardápio usa “Configurar opções” quando vazio e abre as opções do produto recém-criado, como a referência. Só salvar opções fornecidas pelo usuário e confirmadas pela API; não inferir ingredientes da descrição nem inventar adicionais/preços.
+- As escolhas se aplicam à quantidade inteira da linha. Adicionar novamente um produto já personalizado cria uma linha sem personalização, conforme o HTML original. Adicionais somam ao preço por unidade; retirar acompanhamentos não altera o preço.
