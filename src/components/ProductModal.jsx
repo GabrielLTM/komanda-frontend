@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 
 export default function ProductModal({
   productToEdit,
   categories,
   onClose,
   onSave,
+  onDelete,
   onAddCategory,
 }) {
   const [name, setName] = useState(productToEdit ? productToEdit.name : '');
@@ -17,6 +18,7 @@ export default function ProductModal({
   const [isCreatingNewCat, setIsCreatingNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const cleanName = name.trim();
   const parsedPrice = parseFloat(String(price).replace(',', '.'));
@@ -31,29 +33,47 @@ export default function ProductModal({
   const priceError = tried && !isPriceValid ? 'Informe um preço maior que zero.' : '';
   const catError = tried && !isCategoryValid ? (isCreatingNewCat ? 'Informe o nome da categoria.' : 'Selecione uma categoria ativa.') : '';
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving) return;
     if (!cleanName || !isPriceValid || !isCategoryValid) {
       setTried(true);
       return;
     }
 
-    let finalCatId = catId;
-    if (isCreatingNewCat && newCatName.trim()) {
-      finalCatId = onAddCategory(newCatName.trim());
+    setSaving(true);
+    try {
+      let finalCatId = catId;
+      if (isCreatingNewCat && newCatName.trim()) {
+        finalCatId = await onAddCategory(newCatName.trim());
+        if (!finalCatId) return; // não conseguiu criar a categoria
+      }
+
+      const payload = {
+        ...(productToEdit || {}),
+        name: cleanName,
+        desc: desc.trim(),
+        price: parsedPrice,
+        catId: finalCatId,
+        active: productToEdit ? productToEdit.active : true,
+        ings: productToEdit ? productToEdit.ings : [],
+        extras: productToEdit ? productToEdit.extras : [],
+      };
+
+      await onSave(payload);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    const payload = {
-      ...(productToEdit || {}),
-      name: cleanName,
-      desc: desc.trim(),
-      price: parsedPrice,
-      catId: finalCatId,
-      active: productToEdit ? productToEdit.active : true,
-      ings: productToEdit ? productToEdit.ings : [],
-      extras: productToEdit ? productToEdit.extras : [],
-    };
-
-    onSave(payload);
+  const handleDelete = async () => {
+    if (saving) return;
+    if (!window.confirm(`Excluir "${productToEdit.name}" do cardápio? Esta ação não pode ser desfeita.`)) return;
+    setSaving(true);
+    try {
+      await onDelete(productToEdit);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,7 +128,7 @@ export default function ProductModal({
                 setName(e.target.value);
                 setTried(false);
               }}
-              maxLength={100}
+              maxLength={80}
               placeholder="Ex: Xis Frango"
               style={{
                 border: nameError ? '1px solid #C41F27' : '1px solid #E2DBD3',
@@ -229,6 +249,15 @@ export default function ProductModal({
 
         {/* Actions */}
         <div style={{ padding: '16px 22px', borderTop: '1px solid #F1ECE6', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          {productToEdit && (
+            <button
+              onClick={handleDelete}
+              disabled={saving}
+              style={{ marginRight: 'auto', border: '1px solid #E2C2C3', background: '#fff', color: '#C41F27', borderRadius: '10px', padding: '11px 16px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Trash2 size={15} /> Excluir
+            </button>
+          )}
           <button
             onClick={onClose}
             style={{ border: '1px solid #E2DBD3', background: '#fff', borderRadius: '10px', padding: '11px 18px', fontSize: '14px', fontWeight: 700 }}
@@ -237,7 +266,8 @@ export default function ProductModal({
           </button>
           <button
             onClick={handleSave}
-            style={{ border: 0, background: '#C41F27', color: '#fff', borderRadius: '10px', padding: '11px 20px', fontSize: '14px', fontWeight: 800 }}
+            disabled={saving}
+            style={{ border: 0, background: '#C41F27', color: '#fff', borderRadius: '10px', padding: '11px 20px', fontSize: '14px', fontWeight: 800, opacity: saving ? 0.6 : 1 }}
           >
             {productToEdit ? 'Salvar alterações' : 'Salvar item'}
           </button>

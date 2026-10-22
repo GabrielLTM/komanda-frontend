@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { formatMoney } from '../utils/format';
+import { api } from '../services/api';
 
 export default function CardapioAdmin({
   products,
@@ -8,6 +9,8 @@ export default function CardapioAdmin({
   categories,
   onOpenNewProduct,
   onEditProduct,
+  backendOnline,
+  showToast,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatId, setSelectedCatId] = useState(0);
@@ -35,17 +38,48 @@ export default function CardapioAdmin({
     return c ? c.name : 'Sem categoria';
   };
 
-  const handleToggleProductActive = (id) => {
+  const handleToggleProductActive = async (id) => {
+    const prod = products.find((p) => p.id === id);
+    if (!prod) return;
+    const novoAtivo = !prod.active;
+
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p))
+      prev.map((p) => (p.id === id ? { ...p, active: novoAtivo } : p))
     );
+
+    if (backendOnline) {
+      try {
+        await api.updateProduto(id, { ativo: novoAtivo });
+      } catch (err) {
+        // Reverte em caso de erro
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, active: !novoAtivo } : p))
+        );
+        showToast && showToast('Erro ao atualizar produto: ' + err.message);
+      }
+    }
   };
 
-  const handlePriceChange = (id, newPriceStr) => {
+  const handlePriceChange = async (id, newPriceStr) => {
+    const prod = products.find((p) => p.id === id);
     const parsed = parseFloat(newPriceStr.replace(',', '.'));
+    if (!prod || isNaN(parsed) || parsed <= 0 || parsed === prod.price) return;
+
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, price: isNaN(parsed) ? p.price : parsed } : p))
+      prev.map((p) => (p.id === id ? { ...p, price: parsed } : p))
     );
+
+    if (backendOnline) {
+      try {
+        await api.updateProduto(id, { preco: parsed });
+      } catch (err) {
+        // Reverte em caso de erro
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, price: prod.price } : p))
+        );
+        showToast && showToast('Erro ao atualizar preço: ' + err.message);
+      }
+    }
   };
 
   const handleAddIngredient = (productId) => {
@@ -236,13 +270,12 @@ export default function CardapioAdmin({
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E2DBD3', borderRadius: '8px', padding: '0 10px', height: '36px', fontSize: '14px', fontWeight: 700, gap: '4px' }}>
                   <span style={{ color: '#9A9089', fontWeight: 500 }}>R$</span>
                   <input
+                    key={p.price}
                     defaultValue={p.price.toFixed(2).replace('.', ',')}
                     onBlur={(e) => handlePriceChange(p.id, e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handlePriceChange(p.id, e.currentTarget.value);
-                        e.currentTarget.blur();
-                      }
+                      // O onBlur já salva o preço
+                      if (e.key === 'Enter') e.currentTarget.blur();
                     }}
                     style={{ border: 0, outline: 'none', width: '60px', fontSize: '14px', fontWeight: 700, background: 'transparent' }}
                   />

@@ -24,6 +24,27 @@ import {
   INITIAL_ORDERS,
 } from './data/initialData';
 
+// Mapeia um produto do backend para o formato usado pelos componentes.
+// O backend ainda não guarda acompanhamentos (ings) nem adicionais (extras).
+const mapProdutoDaApi = (p) => ({
+  id: p.id,
+  catId: p.categoria ? p.categoria.id : p.categoriaId,
+  name: p.nome,
+  price: Number(p.preco),
+  desc: p.descricao || '',
+  active: p.ativo,
+  ings: [],
+  extras: [],
+});
+
+// Corpo de criação/edição de produto no formato do backend.
+const produtoParaApi = (prod) => ({
+  nome: prod.name,
+  descricao: prod.desc || null,
+  preco: prod.price,
+  categoriaId: prod.catId,
+});
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('pedido');
   const [waitMinutes, setWaitMinutes] = useState('40');
@@ -56,26 +77,35 @@ export default function App() {
     }, 2800);
   };
 
-  // Carregar categorias do backend na inicialização
+  // Carregar categorias e produtos do backend na inicialização
   useEffect(() => {
     api.health()
       .then((ok) => {
-        if (!ok) return;
+        if (!ok) return; // backend offline, usa dados locais
         setBackendOnline(true);
-        return api.getCategorias();
-      })
-      .then((data) => {
-        if (!data) return; // backend offline, usa dados locais
-        // Mapeia resposta do backend para o formato do frontend
-        const mapped = data.map((c) => ({
-          id: c.id,
-          name: c.nome,
-          active: c.ativo,
-          ordem: c.ordem,
-        }));
-        // Ordena por campo `ordem` vindo do banco
-        mapped.sort((a, b) => a.ordem - b.ordem);
-        setCategories(mapped);
+
+        api.getCategorias()
+          .then((data) => {
+            // Mapeia resposta do backend para o formato do frontend
+            const mapped = data.map((c) => ({
+              id: c.id,
+              name: c.nome,
+              active: c.ativo,
+              ordem: c.ordem,
+            }));
+            // Ordena por campo `ordem` vindo do banco
+            mapped.sort((a, b) => a.ordem - b.ordem);
+            setCategories(mapped);
+          })
+          .catch(() => {
+            // Falha ao carregar — mantém categorias locais
+          });
+
+        api.getProdutos()
+          .then((data) => setProducts(data.map(mapProdutoDaApi)))
+          .catch(() => {
+            // Falha ao carregar — mantém produtos locais
+          });
       })
       .catch(() => {
         // Backend inacessível — mantém dados locais
@@ -165,33 +195,83 @@ export default function App() {
   };
 
   // Product modal actions
-  const handleSaveProduct = (prodData) => {
-    if (prodData.id) {
-      // Edit
-      setProducts((prev) =>
-        prev.map((p) => (p.id === prodData.id ? prodData : p))
-      );
-      showToast('Produto atualizado com sucesso');
-    } else {
-      // Create
-      const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
-      setProducts((prev) => [...prev, { ...prodData, id: newId }]);
-      showToast('Produto cadastrado com sucesso');
+  const handleSaveProduct = async (prodData) => {
+    try {
+      if (prodData.id) {
+        // Edit
+        if (backendOnline) {
+          const updated = await api.updateProduto(prodData.id, produtoParaApi(prodData));
+          // Acompanhamentos e adicionais só existem no frontend por enquanto
+          setProducts((prev) =>
+            prev.map((p) =>
+              p.id === updated.id ? { ...mapProdutoDaApi(updated), ings: prodData.ings, extras: prodData.extras } : p
+            )
+          );
+        } else {
+          setProducts((prev) =>
+            prev.map((p) => (p.id === prodData.id ? prodData : p))
+          );
+        }
+        showToast('Produto atualizado com sucesso');
+      } else {
+        // Create
+        if (backendOnline) {
+          const created = await api.createProduto(produtoParaApi(prodData));
+          setProducts((prev) => [...prev, mapProdutoDaApi(created)]);
+        } else {
+          const newId = Math.max(0, ...products.map((p) => p.id)) + 1;
+          setProducts((prev) => [...prev, { ...prodData, id: newId }]);
+        }
+        showToast('Produto cadastrado com sucesso');
+      }
+    } catch (err) {
+      // Mantém o modal aberto para o usuário corrigir os dados
+      showToast('Erro ao salvar produto: ' + err.message);
+      return;
     }
     setProductModal({ open: false, product: null });
   };
 
-  const handleAddCategoryFromProduct = (categoryName) => {
+  const handleDeleteProduct = async (prod) => {
+    try {
+      if (backendOnline) {
+        await api.deleteProduto(prod.id);
+      }
+      setProducts((prev) => prev.filter((p) => p.id !== prod.id));
+      showToast('Produto excluído');
+    } catch (err) {
+      showToast('Erro ao excluir produto: ' + err.message);
+      return;
+    }
+    setProductModal({ open: false, product: null });
+  };
+
+  // Devolve o id da categoria, ou null se não conseguiu criá-la no backend
+  const handleAddCategoryFromProduct = async (categoryName) => {
     const existing = categories.find(
       (c) => c.name.trim().toLowerCase() === categoryName.trim().toLowerCase()
     );
-    if (existing) {
-      if (existing.active === false) {
-        setCategories((prev) =>
-          prev.map((c) => (c.id === existing.id ? { ...c, active: true } : c))
-        );
+    try {
+      if (existing) {
+        if (existing.active === false) {
+          if (backendOnline) {
+            await api.updateCategoria(existing.id, { ativo: true });
+          }
+          setCategories((prev) =>
+            prev.map((c) => (c.id === existing.id ? { ...c, active: true } : c))
+          );
+        }
+        return existing.id;
       }
-      return existing.id;
+      if (backendOnline) {
+        const ordem = categories.length + 1;
+        const created = await api.createCategoria({ nome: categoryName.trim(), ordem });
+        setCategories((prev) => [...prev, { id: created.id, name: created.nome, active: created.ativo, ordem: created.ordem }]);
+        return created.id;
+      }
+    } catch (err) {
+      showToast('Erro ao salvar categoria: ' + err.message);
+      return null;
     }
     const newId = Math.max(0, ...categories.map((c) => c.id)) + 1;
     setCategories((prev) => [...prev, { id: newId, name: categoryName.trim(), active: true }]);
@@ -242,6 +322,8 @@ export default function App() {
             categories={categories}
             onOpenNewProduct={() => setProductModal({ open: true, product: null })}
             onEditProduct={(prod) => setProductModal({ open: true, product: prod })}
+            backendOnline={backendOnline}
+            showToast={showToast}
           />
         )}
 
@@ -320,6 +402,7 @@ export default function App() {
           categories={categories}
           onClose={() => setProductModal({ open: false, product: null })}
           onSave={handleSaveProduct}
+          onDelete={handleDeleteProduct}
           onAddCategory={handleAddCategoryFromProduct}
         />
       )}
