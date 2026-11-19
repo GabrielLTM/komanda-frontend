@@ -14,10 +14,6 @@ import ProductModal from './components/ProductModal';
 import Toast from './components/Toast';
 import { api } from './services/api';
 
-import {
-  INITIAL_ORDERS,
-} from './data/initialData';
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('pedido');
   const [customizationProductId, setCustomizationProductId] = useState(null);
@@ -36,11 +32,10 @@ export default function App() {
   const [products, setProducts] = useState([]);
   const [motoboys, setMotoboys] = useState([]);
   const [bairros, setBairros] = useState([]);
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [orders, setOrders] = useState([]);
 
   // Cart & Order state
   const [cart, setCart] = useState([]);
-  const [orderNum, setOrderNum] = useState(106);
 
   // Modals & Feedback
   const [detailOrder, setDetailOrder] = useState(null);
@@ -60,8 +55,8 @@ export default function App() {
     setIsLoading(true);
     setLoadError('');
     try {
-      const [online, cats, prods, mb, areas] = await Promise.all([
-        api.health(), api.getCategorias(), api.getProdutos(), api.getMotoboys(), api.getBairros(),
+      const [online, cats, prods, mb, areas, pedidos] = await Promise.all([
+        api.health(), api.getCategorias(), api.getProdutos(), api.getMotoboys(), api.getBairros(), api.getPedidos(),
       ]);
       if (sequence !== loadSequence.current) return;
       if (!online) throw new Error('O servidor não está disponível. Tente novamente.');
@@ -69,6 +64,7 @@ export default function App() {
       setProducts(prods);
       setMotoboys(mb);
       setBairros(areas);
+      setOrders(pedidos);
     } catch (err) {
       if (sequence === loadSequence.current) setLoadError(err.message || 'Não foi possível carregar os cadastros.');
     } finally {
@@ -114,10 +110,16 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleFinishOrder = () => {
-    showToast('O registro de pedidos ainda não está disponível; a comanda foi mantida como rascunho.');
-    return false;
-  };
+  // A API numera os pedidos por noite; aqui é só a previsão do próximo número.
+  const orderNum = orders.reduce((max, o) => Math.max(max, o.num), 0) + 1;
+  const openOrdersCount = orders.filter((o) => o.status === 'prod' || o.status === 'ready').length;
+
+  const handleFinishOrder = (data) => runMutation(async () => {
+    const created = await api.createPedido(data);
+    setOrders((prev) => [...prev, created]);
+    setCart([]);
+    showToast(`Pedido #${created.num} enviado para a cozinha.`);
+  });
 
   // Opening detail/print preview for an existing order or cart
   const handleOpenOrderDetail = (num) => {
@@ -131,13 +133,28 @@ export default function App() {
     setDetailOrder(cartDoc);
   };
 
+  const replaceOrder = (num, patch) => {
+    setOrders((prev) => prev.map((o) => (o.num === num ? { ...o, ...patch } : o)));
+    setDetailOrder((prev) => (prev && prev.num === num ? { ...prev, ...patch } : prev));
+  };
+
   const handleUpdateOrder = (num, patch) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.num === num ? { ...o, ...patch } : o))
-    );
-    if (detailOrder && detailOrder.num === num) {
-      setDetailOrder((prev) => ({ ...prev, ...patch }));
+    const order = orders.find((o) => o.num === num);
+    if (!order) return;
+    // Status e motoboy são gravados na API; o recebimento do fiado ainda é só local.
+    if (patch.status !== undefined) {
+      return runMutation(async () => {
+        const updated = await api.updatePedidoStatus(order.id, patch.status);
+        replaceOrder(num, { ...updated, fiadoPaid: order.fiadoPaid });
+      });
     }
+    if (patch.moto !== undefined) {
+      return runMutation(async () => {
+        const updated = await api.updatePedidoMotoboy(order.id, patch.moto);
+        replaceOrder(num, { ...updated, fiadoPaid: order.fiadoPaid });
+      });
+    }
+    replaceOrder(num, patch);
   };
 
   const handleSaveCategory = async (catData) => {
@@ -263,7 +280,7 @@ export default function App() {
     showToast('Motoboy excluído.');
   });
 
-  const demoTabs = ['pedido', 'quadro', 'caixa'];
+  const demoTabs = ['caixa'];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '210px minmax(0, 1fr)', minHeight: '100vh' }}>
@@ -271,7 +288,7 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        ordersCount={0}
+        ordersCount={openOrdersCount}
         waitMinutes={waitMinutes}
         setWaitMinutes={setWaitMinutes}
       />
@@ -281,7 +298,7 @@ export default function App() {
         {isLoading && <div role="status" style={{ padding: '8px 12px', color: '#4A423C' }}>Carregando cadastros do servidor…</div>}
         {loadError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}><span>{loadError}</span><button type="button" onClick={loadData} disabled={isLoading}>Tentar novamente</button></div>}
         {mutationError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px' }}>{mutationError}</div>}
-        {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Demonstração local: pedidos, quadro e caixa ainda não são gravados no servidor.</div>}
+        {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Os números do caixa são calculados na tela a partir dos pedidos desta noite.</div>}
         <div hidden={activeTab !== 'pedido'}>
           <NovoPedido
             products={products}
@@ -292,7 +309,8 @@ export default function App() {
             orderNum={orderNum}
             onFinishOrder={handleFinishOrder}
             onPreviewCart={handlePreviewCart}
-            orderPersistenceAvailable={false}
+            orderPersistenceAvailable
+            busy={mutationBusy}
             onConfigureProduct={(id) => {
               setCustomizationProductId(id);
               setReturnToOrder(true);
@@ -304,7 +322,7 @@ export default function App() {
         {activeTab === 'quadro' && (
           <QuadroPedidos
             orders={orders}
-            setOrders={setOrders}
+            onUpdateOrder={handleUpdateOrder}
             motoboys={motoboys}
             onOpenDetail={handleOpenOrderDetail}
           />

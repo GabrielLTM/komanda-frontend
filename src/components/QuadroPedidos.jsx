@@ -4,7 +4,7 @@ import { formatMoney } from '../utils/format';
 
 export default function QuadroPedidos({
   orders,
-  setOrders,
+  onUpdateOrder,
   motoboys,
   onOpenDetail,
 }) {
@@ -18,19 +18,15 @@ export default function QuadroPedidos({
   ];
 
   const moveOrder = (num, newStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.num === num ? { ...o, status: newStatus } : o))
-    );
+    const order = orders.find((o) => o.num === num);
+    if (order && order.status !== newStatus) onUpdateOrder(num, { status: newStatus });
     setDraggedOrderNum(null);
     setOverColId(null);
   };
 
   const handleSetMotoboy = (orderNum, motoId) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.num === orderNum ? { ...o, moto: o.moto === motoId ? null : motoId } : o
-      )
-    );
+    const order = orders.find((o) => o.num === orderNum);
+    if (order) onUpdateOrder(orderNum, { moto: order.moto === motoId ? null : motoId });
   };
 
   return (
