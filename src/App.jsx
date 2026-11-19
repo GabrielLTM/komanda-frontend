@@ -32,6 +32,7 @@ export default function App() {
   const [motoboys, setMotoboys] = useState([]);
   const [bairros, setBairros] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [ordersAvailable, setOrdersAvailable] = useState(false);
 
   // Cart & Order state
   const [cart, setCart] = useState([]);
@@ -54,8 +55,9 @@ export default function App() {
     setIsLoading(true);
     setLoadError('');
     try {
+      // Pedidos carregam à parte: se a API de pedidos não estiver publicada, os cadastros seguem funcionando.
       const [online, cats, prods, mb, areas, pedidos] = await Promise.all([
-        api.health(), api.getCategorias(), api.getProdutos(), api.getMotoboys(), api.getBairros(), api.getPedidos(),
+        api.health(), api.getCategorias(), api.getProdutos(), api.getMotoboys(), api.getBairros(), api.getPedidos().catch(() => null),
       ]);
       if (sequence !== loadSequence.current) return;
       if (!online) throw new Error('O servidor não está disponível. Tente novamente.');
@@ -63,7 +65,8 @@ export default function App() {
       setProducts(prods);
       setMotoboys(mb);
       setBairros(areas);
-      setOrders(pedidos);
+      setOrders(pedidos ?? []);
+      setOrdersAvailable(pedidos !== null);
     } catch (err) {
       if (sequence === loadSequence.current) setLoadError(err.message || 'Não foi possível carregar os cadastros.');
     } finally {
@@ -296,6 +299,7 @@ export default function App() {
       <main style={{ padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0, flex: 1 }}>
         {isLoading && <div role="status" style={{ padding: '8px 12px', color: '#4A423C' }}>Carregando cadastros do servidor…</div>}
         {loadError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}><span>{loadError}</span><button type="button" onClick={loadData} disabled={isLoading}>Tentar novamente</button></div>}
+        {!isLoading && !loadError && !ordersAvailable && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>O registro de pedidos não está disponível no servidor no momento.</div>}
         {mutationError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px' }}>{mutationError}</div>}
         {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Os números do caixa são calculados na tela a partir dos pedidos desta noite.</div>}
         <div hidden={activeTab !== 'pedido'}>
@@ -308,7 +312,7 @@ export default function App() {
             orderNum={orderNum}
             onFinishOrder={handleFinishOrder}
             onPreviewCart={handlePreviewCart}
-            orderPersistenceAvailable
+            orderPersistenceAvailable={ordersAvailable}
             busy={mutationBusy}
             onConfigureProduct={(id) => {
               setCustomizationProductId(id);
