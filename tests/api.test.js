@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createApi, mapMotoboyFromApi, mapNeighborhoodFromApi, mapProductFromApi, productToApi } from '../src/services/api.js';
+import { createApi, mapMotoboyFromApi, mapNeighborhoodFromApi, mapOrderFromApi, mapProductFromApi, orderStatusToApi, orderToApi, productToApi } from '../src/services/api.js';
 
 const jsonResponse = (body, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
@@ -39,4 +39,34 @@ test('HTTP errors use the Portuguese backend message and DELETE 204 is accepted'
   await assert.rejects(apiError.createCategoria({ name: 'Lanches' }), /Nome já cadastrado/);
   const apiDelete = createApi({ fetchImpl: async () => ({ ok: true, status: 204, json: async () => null }) });
   assert.equal(await apiDelete.deleteBairro(8), null);
+});
+
+test('order payload follows the API contract for pickup and delivery', () => {
+  const cart = [{ productId: 1, qty: 2, removed: ['Tomate'], added: ['Bacon'] }];
+  assert.deepEqual(
+    orderToApi({ type: 'balcao', clientName: ' Ana ', phone: '(51) 9999', bairroId: '3', street: 'Rua A', cart, paymentMethod: 'Crédito', cashGiven: '' }),
+    { tipo: 'RETIRADA', nomeCliente: 'Ana', telefone: null, bairroId: null, endereco: null, itens: [{ produtoId: 1, quantidade: 2, ingredientesRetirados: ['Tomate'], adicionais: ['Bacon'] }], formaPagamento: 'CREDITO' },
+  );
+  const delivery = orderToApi({ type: 'delivery', clientName: 'Ana', phone: '', bairroId: '3', street: ' Rua A, 10 ', cart, paymentMethod: 'Dinheiro', cashGiven: '100' });
+  assert.equal(delivery.tipo, 'ENTREGA');
+  assert.equal(delivery.bairroId, 3);
+  assert.equal(delivery.endereco, 'Rua A, 10');
+  assert.equal(delivery.telefone, null);
+  assert.equal(delivery.valorRecebido, 100);
+});
+
+test('order mapping translates API codes to screen labels', () => {
+  const order = mapOrderFromApi({
+    id: 9, numero: 4, criadoEm: '2026-11-19T22:03:44.675Z', tipo: 'ENTREGA', status: 'PRONTO', nomeCliente: 'Maria', telefone: null,
+    bairro: { id: 1, nome: 'Centro' }, endereco: 'Rua A', taxaEntrega: 5, total: 77, formaPagamento: 'FIADO', valorRecebido: null, motoboy: { id: 2, nome: 'Cleber' },
+    itens: [{ nome: 'Xis Salada', quantidade: 2, subtotal: 66, adicionais: [{ nome: 'Bacon', preco: 5 }], ingredientesRetirados: ['Tomate'] }],
+  });
+  assert.equal(order.num, 4);
+  assert.equal(order.status, 'ready');
+  assert.equal(order.type, 'delivery');
+  assert.equal(order.pay, 'Fiado');
+  assert.equal(order.fiadoName, 'Maria');
+  assert.equal(order.moto, 2);
+  assert.deepEqual(order.items, [{ t: '2x Xis Salada', mod: '+ bacon, sem tomate', v: 66 }]);
+  assert.equal(orderStatusToApi('done'), 'ENTREGUE');
 });

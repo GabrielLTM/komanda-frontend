@@ -13,6 +13,7 @@ export default function NovoPedido({
   onPreviewCart,
   onConfigureProduct,
   orderPersistenceAvailable = false,
+  busy = false,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatId, setSelectedCatId] = useState(0); // 0 = Todos
@@ -20,10 +21,10 @@ export default function NovoPedido({
   const [selectedBairroId, setSelectedBairroId] = useState('');
   const [street, setStreet] = useState('');
   const [phone, setPhone] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [nameError, setNameError] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [cashGiven, setCashGiven] = useState('');
-  const [fiadoName, setFiadoName] = useState('');
-  const [fiadoError, setFiadoError] = useState(false);
   const [openCustomLineKey, setOpenCustomLineKey] = useState(null);
 
   useEffect(() => {
@@ -133,49 +134,30 @@ export default function NovoPedido({
       ? Number(cashGiven) - grandTotal
       : 0;
 
-  const handleFinish = () => {
-    if (cart.length === 0) return;
-    if (paymentMethod === 'Fiado' && !fiadoName.trim()) {
-      setFiadoError(true);
+  const handleFinish = async () => {
+    if (cart.length === 0 || busy) return;
+    if (!clientName.trim()) {
+      setNameError(true);
       return;
     }
 
-    const orderTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    const orderDoc = {
-      num: orderNum,
-      time: orderTime,
+    const saved = await onFinishOrder({
       type: orderType,
-      bairro: orderType === 'delivery' ? selectedBairro?.name || '' : '',
-      street: orderType === 'delivery' ? street : '',
-      phone: phone,
-      cash: cashGiven,
-      pay: paymentMethod,
-      fiadoName: paymentMethod === 'Fiado' ? fiadoName.trim() : '',
-      fiadoPaid: false,
-      total: grandTotal,
-      moto: null,
-      items: cart.map((line) => {
-        const p = getProduct(line.productId);
-        const mods = [
-          ...line.added.map((n) => '+ ' + n.toLowerCase()),
-          ...line.removed.map((r) => 'sem ' + r.toLowerCase()),
-        ].join(', ');
-        return {
-          t: `${line.qty}x ${p.name}`,
-          v: getLineUnitPrice(line) * line.qty,
-          mod: mods,
-        };
-      }),
-    };
-
-    if (onFinishOrder(orderDoc) === false) return;
+      clientName,
+      phone,
+      bairroId: selectedBairroId,
+      street,
+      cart,
+      paymentMethod,
+      cashGiven,
+    });
+    if (!saved) return;
 
     setStreet('');
     setPhone('');
+    setClientName('');
     setCashGiven('');
-    setFiadoName('');
-    setFiadoError(false);
+    setNameError(false);
     setOpenCustomLineKey(null);
   };
 
@@ -188,10 +170,10 @@ export default function NovoPedido({
       type: orderType,
       bairro: orderType === 'delivery' ? selectedBairro?.name || '' : '',
       street: orderType === 'delivery' ? street : '',
-      phone: phone,
+      phone: orderType === 'delivery' ? phone : '',
       cash: cashGiven,
       pay: paymentMethod,
-      fiadoName: paymentMethod === 'Fiado' ? fiadoName.trim() : '',
+      fiadoName: paymentMethod === 'Fiado' ? clientName.trim() : '',
       fiadoPaid: false,
       total: grandTotal,
       moto: null,
@@ -569,15 +551,18 @@ export default function NovoPedido({
 
         {/* Footer Controls & Checkout */}
         <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #F1ECE6' }}>
-          {/* Phone */}
+          {/* Cliente: nome sempre (a API exige); telefone só na entrega */}
           <input
-            value={phone}
-            onChange={(e) => setPhone(formatPhone(e.target.value))}
-            type="tel"
-            inputMode="tel"
-            placeholder="Telefone do cliente"
+            value={clientName}
+            onChange={(e) => {
+              setClientName(e.target.value);
+              setNameError(false);
+            }}
+            aria-label="Nome do cliente"
+            aria-invalid={nameError}
+            placeholder="Nome do cliente"
             style={{
-              border: '1px solid #E2DBD3',
+              border: nameError ? '1px solid #C41F27' : '1px solid #E2DBD3',
               borderRadius: '8px',
               padding: '9px',
               fontSize: '13px',
@@ -585,6 +570,26 @@ export default function NovoPedido({
               outline: 'none',
             }}
           />
+          {nameError && <p role="alert" style={{ margin: 0, color: '#C41F27', fontSize: '12px' }}>Informe o nome do cliente.</p>}
+
+          {orderType === 'delivery' && (
+            <input
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+              type="tel"
+              inputMode="tel"
+              aria-label="Telefone do cliente"
+              placeholder="Telefone do cliente"
+              style={{
+                border: '1px solid #E2DBD3',
+                borderRadius: '8px',
+                padding: '9px',
+                fontSize: '13px',
+                minWidth: 0,
+                outline: 'none',
+              }}
+            />
+          )}
 
           {/* Delivery Fields */}
           {orderType === 'delivery' && (
@@ -649,30 +654,10 @@ export default function NovoPedido({
             })}
           </div>
 
-          {/* Fiado extra field */}
           {paymentMethod === 'Fiado' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#FFF6DB', borderRadius: '8px', padding: '10px' }}>
-              <input
-                value={fiadoName}
-                onChange={(e) => {
-                  setFiadoName(e.target.value);
-                  setFiadoError(false);
-                }}
-                placeholder="Quem pediu? (nome)"
-                style={{
-                  border: fiadoError ? '1px solid #C41F27' : '1px solid #E9D18A',
-                  borderRadius: '8px',
-                  padding: '9px',
-                  fontSize: '13px',
-                  minWidth: 0,
-                  background: '#fff',
-                  outline: 'none',
-                }}
-              />
-              <span style={{ fontSize: '12px', color: '#7A5A00' }}>
-                O pedido fica registrado e o valor vai para "A receber".
-              </span>
-            </div>
+            <span style={{ fontSize: '12px', color: '#7A5A00', background: '#FFF6DB', borderRadius: '8px', padding: '8px 10px' }}>
+              O pedido fica registrado no nome do cliente e o valor vai para "A receber".
+            </span>
           )}
 
           {/* Cash Change extra field */}
@@ -735,7 +720,7 @@ export default function NovoPedido({
 
           <button
             onClick={handleFinish}
-            disabled={cart.length === 0 || !orderPersistenceAvailable || (orderType === 'delivery' && !selectedBairro)}
+            disabled={busy || cart.length === 0 || !orderPersistenceAvailable || (orderType === 'delivery' && !selectedBairro)}
             style={{
               border: 0,
               background: cart.length > 0 && orderPersistenceAvailable ? '#C41F27' : '#D6CFC7',
@@ -752,7 +737,7 @@ export default function NovoPedido({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Send size={16} />
-              <span>{!orderPersistenceAvailable ? 'Registro indisponível' : cart.length > 0 ? 'Enviar pedido' : 'Adicione itens'}</span>
+              <span>{!orderPersistenceAvailable ? 'Registro indisponível' : busy ? 'Enviando…' : cart.length > 0 ? 'Enviar pedido' : 'Adicione itens'}</span>
             </div>
             <span>{formatMoney(grandTotal)}</span>
           </button>

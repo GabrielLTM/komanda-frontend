@@ -61,6 +61,64 @@ export const productToApi = (product) => {
   return payload;
 };
 
+// Pedidos: a API usa códigos (EM_PREPARO, CREDITO...) e as telas usam rótulos.
+const ORDER_STATUS = { EM_PREPARO: 'prod', PRONTO: 'ready', ENTREGUE: 'done', CANCELADO: 'cancelled' };
+const PAYMENT_LABEL = { PIX: 'PIX', CREDITO: 'Crédito', DEBITO: 'Débito', DINHEIRO: 'Dinheiro', FIADO: 'Fiado' };
+const invert = (map) => Object.fromEntries(Object.entries(map).map(([k, v]) => [v, k]));
+export const orderStatusToApi = (status) => invert(ORDER_STATUS)[status];
+export const paymentToApi = (label) => invert(PAYMENT_LABEL)[label];
+
+export const mapOrderFromApi = (order) => ({
+  id: finiteNumber(order.id, 'id do pedido'),
+  num: finiteNumber(order.numero, 'número do pedido'),
+  time: new Date(order.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+  type: order.tipo === 'ENTREGA' ? 'delivery' : 'balcao',
+  clientName: order.nomeCliente,
+  bairro: order.bairro?.nome ?? '',
+  street: order.endereco ?? '',
+  phone: order.telefone ?? '',
+  items: expectArray(order.itens, 'itens do pedido').map((item) => ({
+    t: `${item.quantidade}x ${item.nome}`,
+    mod: [
+      ...item.adicionais.map((adicional) => '+ ' + adicional.nome.toLowerCase()),
+      ...item.ingredientesRetirados.map((nome) => 'sem ' + nome.toLowerCase()),
+    ].join(', '),
+    v: finiteNumber(item.subtotal, 'subtotal do item'),
+  })),
+  fee: finiteNumber(order.taxaEntrega, 'taxa de entrega'),
+  total: finiteNumber(order.total, 'total do pedido'),
+  pay: PAYMENT_LABEL[order.formaPagamento] ?? order.formaPagamento,
+  cash: order.valorRecebido ?? '',
+  fiadoName: order.formaPagamento === 'FIADO' ? order.nomeCliente : '',
+  // shortcut: a API não guarda o recebimento do fiado; a marcação vale só até recarregar a tela.
+  fiadoPaid: false,
+  status: ORDER_STATUS[order.status] ?? order.status,
+  moto: order.motoboy?.id ?? null,
+});
+
+// Monta o corpo do POST /pedidos a partir da comanda da tela.
+export const orderToApi = ({ type, clientName, phone, bairroId, street, cart, paymentMethod, cashGiven }) => {
+  const delivery = type === 'delivery';
+  const payload = {
+    tipo: delivery ? 'ENTREGA' : 'RETIRADA',
+    nomeCliente: clientName.trim(),
+    telefone: delivery ? phone.trim() || null : null,
+    bairroId: delivery ? Number(bairroId) : null,
+    endereco: delivery ? street.trim() : null,
+    itens: cart.map((line) => ({
+      produtoId: line.productId,
+      quantidade: line.qty,
+      ingredientesRetirados: [...line.removed],
+      adicionais: [...line.added],
+    })),
+    formaPagamento: paymentToApi(paymentMethod),
+  };
+  if (paymentMethod === 'Dinheiro' && String(cashGiven).trim() !== '') {
+    payload.valorRecebido = finiteNumber(cashGiven, 'valor recebido');
+  }
+  return payload;
+};
+
 function normalizeBaseUrl(value) {
   return value.replace(/\/$/, '');
 }
@@ -165,6 +223,11 @@ export function createApi({ baseUrl = optionalBaseUrl || '/api', fetchImpl = glo
       return mapMotoboyFromApi(await request('PATCH', `/motoboys/${id}`, payload));
     },
     async deleteMotoboy(id) { return request('DELETE', `/motoboys/${id}`); },
+
+    async getPedidos() { return collection('/pedidos', mapOrderFromApi); },
+    async createPedido(data) { return mapOrderFromApi(await request('POST', '/pedidos', orderToApi(data))); },
+    async updatePedidoStatus(id, status) { return mapOrderFromApi(await request('PATCH', `/pedidos/${id}/status`, { status: orderStatusToApi(status) })); },
+    async updatePedidoMotoboy(id, motoboyId) { return mapOrderFromApi(await request('PATCH', `/pedidos/${id}/motoboy`, { motoboyId })); },
   };
 }
 
