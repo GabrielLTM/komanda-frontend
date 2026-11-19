@@ -5,18 +5,15 @@ export default function CaixaRelatorios({ orders }) {
   const [period, setPeriod] = useState('hoje'); // 'hoje' | 'ontem' | '7dias'
 
   const multiplier = { hoje: 1, ontem: 0.86, '7dias': 6.3 }[period];
-  const revenue = orders.reduce((sum, o) => sum + o.total, 0) * multiplier;
-  const count = Math.round(orders.length * multiplier);
+  // Fiado é quase um brinde: fica fora de todas as métricas de venda, só aparece no extrato.
+  const sales = orders.filter((o) => o.pay !== 'Fiado');
+  const revenue = sales.reduce((sum, o) => sum + o.total, 0) * multiplier;
+  const count = Math.round(sales.length * multiplier);
   const avgTicket = count ? revenue / count : 0;
-
-  // Fiado a receber
-  const fiadoReceivable = orders
-    .filter((o) => o.pay === 'Fiado' && !o.fiadoPaid)
-    .reduce((sum, o) => sum + o.total, 0);
 
   // Top item
   const itemTally = {};
-  orders.forEach((o) => {
+  sales.forEach((o) => {
     o.items.forEach((it) => {
       const match = it.t.match(/^(\d+)x (.+)$/);
       if (match) {
@@ -29,7 +26,7 @@ export default function CaixaRelatorios({ orders }) {
 
   // Payments tally
   const payTally = {};
-  orders.forEach((o) => {
+  sales.forEach((o) => {
     payTally[o.pay] = (payTally[o.pay] || 0) + o.total;
   });
   const totalPaySum = Object.values(payTally).reduce((a, b) => a + b, 0) || 1;
@@ -73,7 +70,6 @@ export default function CaixaRelatorios({ orders }) {
           { label: 'Faturamento', value: formatMoney(revenue) },
           { label: 'Pedidos', value: String(count) },
           { label: 'Ticket médio', value: formatMoney(avgTicket) },
-          { label: 'Fiado a receber', value: formatMoney(fiadoReceivable) },
           { label: 'Mais vendido', value: `${topItem[0]} (${Math.round(topItem[1] * multiplier)})` },
         ].map((k, idx) => (
           <div key={idx} style={{ background: '#fff', border: '1px solid #ECE6DF', borderRadius: '14px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -88,7 +84,7 @@ export default function CaixaRelatorios({ orders }) {
         {/* Payment Methods */}
         <div style={{ background: '#fff', border: '1px solid #ECE6DF', borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <strong style={{ fontSize: '15px' }}>Formas de pagamento</strong>
-          {['PIX', 'Crédito', 'Débito', 'Dinheiro', 'Fiado'].map((p) => {
+          {['PIX', 'Crédito', 'Débito', 'Dinheiro'].map((p) => {
             const val = (payTally[p] || 0) * multiplier;
             const share = Math.round(((payTally[p] || 0) / totalPaySum) * 100) + '%';
 
