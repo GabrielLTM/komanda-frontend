@@ -3,7 +3,6 @@ import Sidebar from './components/Sidebar';
 import NovoPedido from './components/NovoPedido';
 import QuadroPedidos from './components/QuadroPedidos';
 import CardapioAdmin from './components/CardapioAdmin';
-import ConsultaCardapio from './components/ConsultaCardapio';
 import CategoriasAdmin from './components/CategoriasAdmin';
 import MotoboysAdmin from './components/MotoboysAdmin';
 import BairrosAdmin from './components/BairrosAdmin';
@@ -327,12 +326,6 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'consulta' && (
-          <ConsultaCardapio
-            products={products}
-            categories={categories}
-          />
-        )}
 
         {activeTab === 'categorias' && (
           <CategoriasAdmin
