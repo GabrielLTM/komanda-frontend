@@ -34,17 +34,6 @@ export default function CaixaRelatorios({ orders }) {
   });
   const totalPaySum = Object.values(payTally).reduce((a, b) => a + b, 0) || 1;
 
-  // Insumos consumption
-  const inventoryUsage = [
-    { name: 'Pão de Xis', out: '4 un', left: 'resta 38 un' },
-    { name: 'Hambúrguer bovino', out: '0,8 kg', left: 'resta 7,4 kg' },
-    { name: 'Pão de cachorro-quente', out: '2 un', left: 'resta 40 un' },
-    { name: 'Salsicha', out: '0,4 kg', left: 'resta 4,2 kg' },
-    { name: 'Coração de frango', out: '0,2 kg', left: 'resta 2,1 kg' },
-    { name: 'Batata congelada', out: '0,5 kg', left: 'resta 12 kg' },
-    { name: 'Refrigerante lata', out: '3 un', left: 'resta 52 un' },
-  ];
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Header with Period Switcher */}
@@ -94,7 +83,7 @@ export default function CaixaRelatorios({ orders }) {
         ))}
       </div>
 
-      {/* 2 Columns: Payment Methods & Inventory Consumption */}
+      {/* Payment Methods */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px', alignItems: 'start' }}>
         {/* Payment Methods */}
         <div style={{ background: '#fff', border: '1px solid #ECE6DF', borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -117,20 +106,6 @@ export default function CaixaRelatorios({ orders }) {
           })}
         </div>
 
-        {/* Insumos usage */}
-        <div style={{ background: '#fff', border: '1px solid #ECE6DF', borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <strong style={{ fontSize: '15px', marginBottom: '4px' }}>Saída de insumos</strong>
-          <span style={{ fontSize: '12px', color: '#7A7068', marginBottom: '6px' }}>
-            Baixa automática pelos pedidos fechados
-          </span>
-          {inventoryUsage.map((u, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: '10px', padding: '7px 0', borderTop: '1px solid #F4F0EB', fontSize: '13px' }}>
-              <span style={{ flex: 1, minWidth: 0 }}>{u.name}</span>
-              <strong style={{ color: '#C41F27', whiteSpace: 'nowrap' }}>−{u.out}</strong>
-              <span style={{ color: '#7A7068', minWidth: '90px', textAlign: 'right', whiteSpace: 'nowrap' }}>{u.left}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Extrato de Pedidos Table */}
