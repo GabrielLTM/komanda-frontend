@@ -282,7 +282,6 @@ export default function App() {
     showToast('Motoboy excluído.');
   });
 
-  const demoTabs = ['caixa'];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '210px minmax(0, 1fr)', minHeight: '100vh' }}>
@@ -301,7 +300,6 @@ export default function App() {
         {loadError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}><span>{loadError}</span><button type="button" onClick={loadData} disabled={isLoading}>Tentar novamente</button></div>}
         {!isLoading && !loadError && !ordersAvailable && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>O registro de pedidos não está disponível no servidor no momento.</div>}
         {mutationError && <div role="alert" style={{ background: '#FFF0F0', color: '#8C141B', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '12px 14px' }}>{mutationError}</div>}
-        {demoTabs.includes(activeTab) && <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '8px', padding: '10px 14px' }}>Os números do caixa são calculados na tela a partir dos pedidos desta noite.</div>}
         <div hidden={activeTab !== 'pedido'}>
           <NovoPedido
             products={products}

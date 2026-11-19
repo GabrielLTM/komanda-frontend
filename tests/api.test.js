@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createApi, mapMotoboyFromApi, mapNeighborhoodFromApi, mapOrderFromApi, mapProductFromApi, orderStatusToApi, orderToApi, productToApi } from '../src/services/api.js';
+import { createApi, mapClosingFromApi, mapMetricsFromApi, mapMotoboyFromApi, mapNeighborhoodFromApi, mapOrderFromApi, mapProductFromApi, orderStatusToApi, orderToApi, productToApi } from '../src/services/api.js';
 
 const jsonResponse = (body, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
@@ -69,4 +69,16 @@ test('order mapping translates API codes to screen labels', () => {
   assert.equal(order.moto, 2);
   assert.deepEqual(order.items, [{ t: '2x Xis Salada', mod: '+ bacon, sem tomate', v: 66 }]);
   assert.equal(orderStatusToApi('done'), 'ENTREGUE');
+});
+
+test('dashboard and closing mappings translate payment codes and keep zero values', () => {
+  const metrics = mapMetricsFromApi({
+    inicio: '2026-11-19', fim: '2026-11-19', totalVendido: 0, pedidos: 0, ticketMedio: 0,
+    porFormaPagamento: [{ formaPagamento: 'CREDITO', pedidos: 0, total: 0 }],
+    produtoMaisVendido: null, produtoMenosVendido: null, categoriaMaisVendida: null,
+  });
+  assert.deepEqual(metrics.byPayment, [{ name: 'Crédito', orders: 0, total: 0 }]);
+  assert.equal(metrics.topProduct, null);
+  const closing = mapClosingFromApi({ noite: '2026-11-19', totalTaxasEntrega: 5, motoboys: [{ id: 1, nome: 'Cleber', entregas: 1, valorFixoNoite: 40, taxasEntrega: 5, totalAPagar: 45 }] });
+  assert.deepEqual(closing.motoboys[0], { id: 1, name: 'Cleber', deliveries: 1, baseFee: 40, fees: 5, total: 45 });
 });

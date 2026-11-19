@@ -96,6 +96,37 @@ export const mapOrderFromApi = (order) => ({
   moto: order.motoboy?.id ?? null,
 });
 
+const mapSalesByPayment = (list) => expectArray(list, 'formas de pagamento').map((item) => ({
+  name: PAYMENT_LABEL[item.formaPagamento] ?? item.formaPagamento,
+  orders: finiteNumber(item.pedidos, 'pedidos da forma de pagamento'),
+  total: finiteNumber(item.total, 'total da forma de pagamento'),
+}));
+
+export const mapMetricsFromApi = (data) => ({
+  start: data.inicio,
+  end: data.fim,
+  revenue: finiteNumber(data.totalVendido, 'total vendido'),
+  orders: finiteNumber(data.pedidos, 'pedidos'),
+  avgTicket: finiteNumber(data.ticketMedio, 'ticket médio'),
+  byPayment: mapSalesByPayment(data.porFormaPagamento),
+  topProduct: data.produtoMaisVendido,
+  bottomProduct: data.produtoMenosVendido,
+  topCategory: data.categoriaMaisVendida,
+});
+
+export const mapClosingFromApi = (data) => ({
+  night: data.noite,
+  deliveryFees: finiteNumber(data.totalTaxasEntrega, 'taxas de entrega'),
+  motoboys: expectArray(data.motoboys, 'acerto dos motoboys').map((m) => ({
+    id: m.id,
+    name: m.nome,
+    deliveries: finiteNumber(m.entregas, 'entregas'),
+    baseFee: finiteNumber(m.valorFixoNoite, 'diária'),
+    fees: finiteNumber(m.taxasEntrega, 'taxas do motoboy'),
+    total: finiteNumber(m.totalAPagar, 'total do motoboy'),
+  })),
+});
+
 // Monta o corpo do POST /pedidos a partir da comanda da tela.
 export const orderToApi = ({ type, clientName, phone, bairroId, street, cart, paymentMethod, cashGiven }) => {
   const delivery = type === 'delivery';
@@ -224,6 +255,15 @@ export function createApi({ baseUrl = optionalBaseUrl || '/api', fetchImpl = glo
     },
     async deleteMotoboy(id) { return request('DELETE', `/motoboys/${id}`); },
 
+    async getMetricas({ inicio, fim } = {}) {
+      const params = new URLSearchParams();
+      if (inicio) params.set('inicio', inicio);
+      if (fim) params.set('fim', fim);
+      return mapMetricsFromApi(await request('GET', `/dashboard/metricas${params.size ? `?${params}` : ''}`));
+    },
+    async getFechamento(noite) {
+      return mapClosingFromApi(await request('GET', `/caixa/fechamento${noite ? `?noite=${noite}` : ''}`));
+    },
     async getPedidos() { return collection('/pedidos', mapOrderFromApi); },
     async createPedido(data) { return mapOrderFromApi(await request('POST', '/pedidos', orderToApi(data))); },
     async updatePedidoStatus(id, status) { return mapOrderFromApi(await request('PATCH', `/pedidos/${id}/status`, { status: orderStatusToApi(status) })); },
