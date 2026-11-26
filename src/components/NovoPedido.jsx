@@ -1,20 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, Minus, Printer, Send } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, Plus, Minus, Printer, Send, ArrowLeft, ArrowRight } from 'lucide-react';
 import { formatMoney, formatPhone } from '../utils/format';
-
-const FOOTER_HEIGHT_KEY = 'komanda:comanda-rodape-altura';
-const MIN_FOOTER = 140;
-const MIN_LIST = 90;
-const RESIZE_STEP = 24;
-
-function readSavedFooterHeight() {
-  try {
-    const value = Number(window.localStorage.getItem(FOOTER_HEIGHT_KEY));
-    return Number.isFinite(value) && value > 0 ? value : null;
-  } catch {
-    return null;
-  }
-}
 
 export default function NovoPedido({
   products,
@@ -40,70 +26,12 @@ export default function NovoPedido({
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [cashGiven, setCashGiven] = useState('');
   const [openCustomLineKey, setOpenCustomLineKey] = useState(null);
-
-  // Divisão arrastável entre a lista de itens e os dados do pedido.
-  // null = altura automática do rodapé.
-  const [footerHeight, setFooterHeight] = useState(readSavedFooterHeight);
-  const [resizing, setResizing] = useState(false);
-  const asideRef = useRef(null);
-  const headerRef = useRef(null);
-  const footerRef = useRef(null);
+  // A comanda tem duas etapas: montar os itens e, depois, preencher cliente, entrega e pagamento.
+  const [step, setStep] = useState('itens'); // 'itens' | 'dados'
 
   useEffect(() => {
-    try {
-      if (footerHeight === null) window.localStorage.removeItem(FOOTER_HEIGHT_KEY);
-      else window.localStorage.setItem(FOOTER_HEIGHT_KEY, String(Math.round(footerHeight)));
-    } catch {
-      // Sem armazenamento disponível: a divisão vale só nesta sessão.
-    }
-  }, [footerHeight]);
-
-  const clampFooter = (height) => {
-    const aside = asideRef.current;
-    const header = headerRef.current;
-    if (!aside || !header) return height;
-    const max = aside.clientHeight - header.offsetHeight - MIN_LIST;
-    return Math.max(MIN_FOOTER, Math.min(height, Math.max(MIN_FOOTER, max)));
-  };
-
-  const currentFooterHeight = () => footerRef.current?.getBoundingClientRect().height ?? MIN_FOOTER;
-
-  const handleResizeStart = (event) => {
-    if (event.button !== undefined && event.button !== 0) return;
-    event.preventDefault();
-    const startY = event.clientY;
-    const startHeight = currentFooterHeight();
-    setResizing(true);
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
-
-    const handleMove = (moveEvent) => {
-      // Arrastar para cima aumenta os dados do pedido; para baixo aumenta a lista.
-      setFooterHeight(clampFooter(startHeight - (moveEvent.clientY - startY)));
-    };
-    const handleUp = () => {
-      setResizing(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-      window.removeEventListener('pointercancel', handleUp);
-    };
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-    window.addEventListener('pointercancel', handleUp);
-  };
-
-  const handleResizeKey = (event) => {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      event.preventDefault();
-      const delta = event.key === 'ArrowUp' ? RESIZE_STEP : -RESIZE_STEP;
-      setFooterHeight(clampFooter(currentFooterHeight() + delta));
-    } else if (event.key === 'Home' || event.key === 'Enter') {
-      event.preventDefault();
-      setFooterHeight(null);
-    }
-  };
+    if (cart.length === 0) setStep('itens');
+  }, [cart.length]);
 
   useEffect(() => {
     const activeAreas = bairros.filter((b) => b.active);
@@ -146,6 +74,7 @@ export default function NovoPedido({
   };
 
   const handleAddProduct = (prodId) => {
+    setStep('itens');
     const existingIndex = cart.findIndex(
       (l) => l.productId === prodId && l.added.length === 0 && l.removed.length === 0
     );
@@ -237,6 +166,7 @@ export default function NovoPedido({
     setCashGiven('');
     setNameError(false);
     setOpenCustomLineKey(null);
+    setStep('itens');
   };
 
   const handlePreview = () => {
@@ -396,7 +326,6 @@ export default function NovoPedido({
 
       {/* RIGHT SECTION: Cart / Comanda Sidebar */}
       <aside
-        ref={asideRef}
         style={{
           background: '#fff',
           border: '1px solid #ECE6DF',
@@ -410,7 +339,7 @@ export default function NovoPedido({
         }}
       >
         {/* Comanda Header */}
-        <div ref={headerRef} style={{ padding: '16px 18px', borderBottom: '1px solid #F1ECE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '16px 18px', borderBottom: '1px solid #F1ECE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <strong style={{ fontSize: '16px' }}>Comanda #{orderNum}</strong>
           <div style={{ display: 'flex', background: '#F4F0EB', borderRadius: '8px', padding: '3px', gap: '2px' }}>
             <button
@@ -447,7 +376,7 @@ export default function NovoPedido({
         </div>
 
         {/* Cart Items List */}
-        <div style={{ padding: '6px 18px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'auto' }}>
+        {step === 'itens' && <div style={{ padding: '6px 18px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'auto' }}>
           {cart.length === 0 ? (
             <p style={{ margin: 0, padding: '28px 0', textAlign: 'center', fontSize: '13px', color: '#9A9089' }}>
               Toque nos itens ao lado para adicionar.
@@ -626,47 +555,63 @@ export default function NovoPedido({
               );
             })
           )}
-        </div>
+        </div>}
 
-        {/* Divisória arrastável */}
-        <div
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="Ajustar tamanho da lista de itens. Arraste ou use as setas; Enter volta ao padrão."
-          tabIndex={0}
-          title="Arraste para ajustar. Duplo clique volta ao padrão."
-          onPointerDown={handleResizeStart}
-          onKeyDown={handleResizeKey}
-          onDoubleClick={() => setFooterHeight(null)}
-          style={{
-            flexShrink: 0,
-            height: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'row-resize',
-            touchAction: 'none',
-            borderTop: '1px solid #F1ECE6',
-            background: resizing ? '#FFF6DB' : 'transparent',
-            outlineOffset: '-2px',
-          }}
-        >
-          <span style={{ width: '40px', height: '4px', borderRadius: '999px', background: resizing ? '#F5B800' : '#D6CFC7' }} />
-        </div>
+        {/* Etapa 1: só o subtotal e o botão para seguir aos dados do pedido */}
+        {step === 'itens' && (
+          <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #F1ECE6', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6E655E' }}>
+              <span>Subtotal</span>
+              <span>{formatMoney(subtotal)}</span>
+            </div>
+            <button
+              onClick={() => setStep('dados')}
+              disabled={cart.length === 0}
+              style={{
+                border: 0,
+                background: cart.length > 0 ? '#C41F27' : '#D6CFC7',
+                color: '#fff',
+                borderRadius: '10px',
+                padding: '15px 18px',
+                fontSize: '16px',
+                fontWeight: 800,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: cart.length > 0 ? 'pointer' : 'not-allowed',
+              }}
+            >
+              <span>{cart.length > 0 ? 'Finalizar pedido' : 'Adicione itens'}</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        )}
 
-        {/* Footer Controls & Checkout */}
-        <div
-          ref={footerRef}
+        {/* Etapa 2: cliente, entrega e pagamento */}
+        {step === 'dados' && <div
           style={{
-            padding: '8px 18px 14px',
+            padding: '14px 18px',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
-            flexShrink: 0,
-            ...(footerHeight === null ? { maxHeight: '70%' } : { height: `${footerHeight}px` }),
+            flex: 1,
+            minHeight: 0,
             overflowY: 'auto',
           }}
         >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: '#FAF8F5', borderRadius: '10px', padding: '10px 12px' }}>
+            <span style={{ fontSize: '13px', color: '#4A423C' }}>
+              {cart.reduce((sum, l) => sum + l.qty, 0)} {cart.reduce((sum, l) => sum + l.qty, 0) === 1 ? 'item' : 'itens'} · {formatMoney(subtotal)}
+            </span>
+            <button
+              type="button"
+              onClick={() => setStep('itens')}
+              style={{ border: 0, background: 'none', padding: 0, fontSize: '13px', fontWeight: 700, color: '#C41F27', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}
+            >
+              <ArrowLeft size={14} /> Voltar aos itens
+            </button>
+          </div>
+
           {/* Cliente: nome sempre (a API exige); telefone só na entrega */}
           <input
             value={clientName}
@@ -857,7 +802,7 @@ export default function NovoPedido({
             </div>
             <span>{formatMoney(grandTotal)}</span>
           </button>
-        </div>
+        </div>}
       </aside>
     </div>
   );
