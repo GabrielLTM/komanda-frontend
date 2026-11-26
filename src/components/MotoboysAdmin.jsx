@@ -42,8 +42,8 @@ export default function MotoboysAdmin({ motoboys, busy, error, defaultDailyFee =
         <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>Motoboys</h1>
         <p style={{ margin: '5px 0 0', fontSize: '13px', color: '#7A7068' }}>Cadastro e diária de cada motoboy.</p>
       </header>
-      <div role="status" style={{ background: '#FFF6DB', color: '#6F5200', border: '1px solid #E9D18A', borderRadius: '10px', padding: '11px 14px', fontSize: '13px' }}>
-        Viagens e acerto ainda não estão disponíveis; nenhum valor de entrega é calculado aqui.
+      <div role="note" style={{ background: '#F4F0EB', color: '#4A423C', border: '1px solid #E2DBD3', borderRadius: '10px', padding: '11px 14px', fontSize: '13px', lineHeight: 1.5 }}>
+        O acerto da noite (diária + taxas dos bairros das entregas concluídas) aparece em <strong>Caixa &amp; Relatórios</strong>, no fechamento.
       </div>
       {(formError || error) && <p role="alert" style={{ margin: 0, color: '#8C141B', background: '#FFF0F0', border: '1px solid #E7A7AA', borderRadius: '8px', padding: '10px 12px' }}>{formError || error}</p>}
       <form noValidate onSubmit={create} style={{ background: '#fff', border: '1px solid #ECE6DF', borderRadius: '14px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '9px' }}>

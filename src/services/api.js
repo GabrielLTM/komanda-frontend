@@ -71,6 +71,9 @@ export const paymentToApi = (label) => invert(PAYMENT_LABEL)[label];
 export const mapOrderFromApi = (order) => ({
   id: finiteNumber(order.id, 'id do pedido'),
   num: finiteNumber(order.numero, 'número do pedido'),
+  createdAt: order.criadoEm,
+  // Prazo (min) que valia quando o pedido foi criado; null em pedidos antigos.
+  deadlineMinutes: Number.isInteger(order.prazoMinutos) ? order.prazoMinutos : null,
   time: new Date(order.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
   type: order.tipo === 'ENTREGA' ? 'delivery' : 'balcao',
   clientName: order.nomeCliente,
@@ -128,7 +131,7 @@ export const mapClosingFromApi = (data) => ({
 });
 
 // Monta o corpo do POST /pedidos a partir da comanda da tela.
-export const orderToApi = ({ type, clientName, phone, bairroId, street, cart, paymentMethod, cashGiven }) => {
+export const orderToApi = ({ type, clientName, phone, bairroId, street, cart, paymentMethod, cashGiven, waitMinutes }) => {
   const delivery = type === 'delivery';
   const payload = {
     tipo: delivery ? 'ENTREGA' : 'RETIRADA',
@@ -147,6 +150,9 @@ export const orderToApi = ({ type, clientName, phone, bairroId, street, cart, pa
   if (paymentMethod === 'Dinheiro' && String(cashGiven).trim() !== '') {
     payload.valorRecebido = finiteNumber(cashGiven, 'valor recebido');
   }
+  // Grava o tempo de espera do momento: mudar o tempo depois não altera este pedido.
+  const deadline = Number(waitMinutes);
+  if (Number.isInteger(deadline) && deadline >= 1 && deadline <= 600) payload.prazoMinutos = deadline;
   return payload;
 };
 
@@ -268,6 +274,7 @@ export function createApi({ baseUrl = optionalBaseUrl || '/api', fetchImpl = glo
     async createPedido(data) { return mapOrderFromApi(await request('POST', '/pedidos', orderToApi(data))); },
     async updatePedidoStatus(id, status) { return mapOrderFromApi(await request('PATCH', `/pedidos/${id}/status`, { status: orderStatusToApi(status) })); },
     async updatePedidoMotoboy(id, motoboyId) { return mapOrderFromApi(await request('PATCH', `/pedidos/${id}/motoboy`, { motoboyId })); },
+    async deletePedido(id) { return request('DELETE', `/pedidos/${id}`); },
   };
 }
 

@@ -1,6 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Minus, Printer, Send } from 'lucide-react';
 import { formatMoney, formatPhone } from '../utils/format';
+
+const FOOTER_HEIGHT_KEY = 'komanda:comanda-rodape-altura';
+const MIN_FOOTER = 140;
+const MIN_LIST = 90;
+const RESIZE_STEP = 24;
+
+function readSavedFooterHeight() {
+  try {
+    const value = Number(window.localStorage.getItem(FOOTER_HEIGHT_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function NovoPedido({
   products,
@@ -26,6 +40,70 @@ export default function NovoPedido({
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [cashGiven, setCashGiven] = useState('');
   const [openCustomLineKey, setOpenCustomLineKey] = useState(null);
+
+  // Divisão arrastável entre a lista de itens e os dados do pedido.
+  // null = altura automática do rodapé.
+  const [footerHeight, setFooterHeight] = useState(readSavedFooterHeight);
+  const [resizing, setResizing] = useState(false);
+  const asideRef = useRef(null);
+  const headerRef = useRef(null);
+  const footerRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      if (footerHeight === null) window.localStorage.removeItem(FOOTER_HEIGHT_KEY);
+      else window.localStorage.setItem(FOOTER_HEIGHT_KEY, String(Math.round(footerHeight)));
+    } catch {
+      // Sem armazenamento disponível: a divisão vale só nesta sessão.
+    }
+  }, [footerHeight]);
+
+  const clampFooter = (height) => {
+    const aside = asideRef.current;
+    const header = headerRef.current;
+    if (!aside || !header) return height;
+    const max = aside.clientHeight - header.offsetHeight - MIN_LIST;
+    return Math.max(MIN_FOOTER, Math.min(height, Math.max(MIN_FOOTER, max)));
+  };
+
+  const currentFooterHeight = () => footerRef.current?.getBoundingClientRect().height ?? MIN_FOOTER;
+
+  const handleResizeStart = (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = currentFooterHeight();
+    setResizing(true);
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMove = (moveEvent) => {
+      // Arrastar para cima aumenta os dados do pedido; para baixo aumenta a lista.
+      setFooterHeight(clampFooter(startHeight - (moveEvent.clientY - startY)));
+    };
+    const handleUp = () => {
+      setResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleUp);
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleUp);
+  };
+
+  const handleResizeKey = (event) => {
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      const delta = event.key === 'ArrowUp' ? RESIZE_STEP : -RESIZE_STEP;
+      setFooterHeight(clampFooter(currentFooterHeight() + delta));
+    } else if (event.key === 'Home' || event.key === 'Enter') {
+      event.preventDefault();
+      setFooterHeight(null);
+    }
+  };
 
   useEffect(() => {
     const activeAreas = bairros.filter((b) => b.active);
@@ -318,6 +396,7 @@ export default function NovoPedido({
 
       {/* RIGHT SECTION: Cart / Comanda Sidebar */}
       <aside
+        ref={asideRef}
         style={{
           background: '#fff',
           border: '1px solid #ECE6DF',
@@ -331,7 +410,7 @@ export default function NovoPedido({
         }}
       >
         {/* Comanda Header */}
-        <div style={{ padding: '16px 18px', borderBottom: '1px solid #F1ECE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div ref={headerRef} style={{ padding: '16px 18px', borderBottom: '1px solid #F1ECE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <strong style={{ fontSize: '16px' }}>Comanda #{orderNum}</strong>
           <div style={{ display: 'flex', background: '#F4F0EB', borderRadius: '8px', padding: '3px', gap: '2px' }}>
             <button
@@ -549,8 +628,45 @@ export default function NovoPedido({
           )}
         </div>
 
+        {/* Divisória arrastável */}
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Ajustar tamanho da lista de itens. Arraste ou use as setas; Enter volta ao padrão."
+          tabIndex={0}
+          title="Arraste para ajustar. Duplo clique volta ao padrão."
+          onPointerDown={handleResizeStart}
+          onKeyDown={handleResizeKey}
+          onDoubleClick={() => setFooterHeight(null)}
+          style={{
+            flexShrink: 0,
+            height: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'row-resize',
+            touchAction: 'none',
+            borderTop: '1px solid #F1ECE6',
+            background: resizing ? '#FFF6DB' : 'transparent',
+            outlineOffset: '-2px',
+          }}
+        >
+          <span style={{ width: '40px', height: '4px', borderRadius: '999px', background: resizing ? '#F5B800' : '#D6CFC7' }} />
+        </div>
+
         {/* Footer Controls & Checkout */}
-        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #F1ECE6' }}>
+        <div
+          ref={footerRef}
+          style={{
+            padding: '8px 18px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            flexShrink: 0,
+            ...(footerHeight === null ? { maxHeight: '70%' } : { height: `${footerHeight}px` }),
+            overflowY: 'auto',
+          }}
+        >
           {/* Cliente: nome sempre (a API exige); telefone só na entrega */}
           <input
             value={clientName}

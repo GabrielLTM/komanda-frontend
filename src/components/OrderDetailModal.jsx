@@ -7,9 +7,15 @@ export default function OrderDetailModal({
   motoboys,
   onClose,
   onUpdateOrder,
+  onCancelOrder,
+  onDeleteOrder,
   onPrintToast,
 }) {
   const [advSettings, setAdvSettings] = useState(false);
+  // Cancelar/excluir pedem confirmação na própria janela: null | 'cancel' | 'delete'
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [obs, setObs] = useState('');
   const [printCfg, setPrintCfg] = useState(() => {
     try {
@@ -109,7 +115,7 @@ export default function OrderDetailModal({
                 {isDelivery ? `Entrega · ${order.bairro || ''}` : 'Balcão'}
               </span>
               <span style={{ fontSize: '11px', fontWeight: 800, borderRadius: '6px', padding: '4px 8px', background: '#F4F0EB', color: '#4A423C' }}>
-                {order.status === 'prod' ? 'Em Produção' : order.status === 'ready' ? 'Pronto' : 'Concluído'}
+                {order.status === 'prod' ? 'Em Produção' : order.status === 'ready' ? 'Pronto' : order.status === 'cancelled' ? 'Cancelado' : 'Concluído'}
               </span>
             </div>
           </div>
@@ -117,6 +123,7 @@ export default function OrderDetailModal({
           {/* Scrollable details */}
           <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
             {/* Status change buttons */}
+            {order.status !== 'cancelled' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A7068', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                 Alterar Status
@@ -148,6 +155,66 @@ export default function OrderDetailModal({
                 })}
               </div>
             </div>
+            )}
+
+            {/* Cancelar / excluir: só para pedidos gravados que ainda não foram concluídos */}
+            {order.id && (order.status === 'prod' || order.status === 'ready') && (onCancelOrder || onDeleteOrder) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {confirmAction === null ? (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setActionError(''); setConfirmAction('cancel'); }}
+                      style={{ border: '1.5px solid #E2DBD3', background: '#fff', color: '#A3161D', borderRadius: '999px', padding: '7px 14px', fontSize: '13px', fontWeight: 700 }}
+                    >
+                      Cancelar pedido
+                    </button>
+                    {order.status === 'prod' && (
+                      <button
+                        type="button"
+                        onClick={() => { setActionError(''); setConfirmAction('delete'); }}
+                        style={{ border: '1.5px solid #E2DBD3', background: '#fff', color: '#A3161D', borderRadius: '999px', padding: '7px 14px', fontSize: '13px', fontWeight: 700 }}
+                      >
+                        Excluir pedido
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div role="alertdialog" aria-label="Confirmar ação" style={{ background: '#FDECEC', border: '1px solid #F3B9BC', borderRadius: '10px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', color: '#7A1016', lineHeight: 1.4 }}>
+                      {confirmAction === 'cancel'
+                        ? `Cancelar o pedido #${order.num}? Ele sai do quadro e não entra no caixa, mas o registro fica salvo.`
+                        : `Excluir o pedido #${order.num}? Ele é apagado de vez. Use para pedidos lançados por engano.`}
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={async () => {
+                          setActionBusy(true);
+                          const error = confirmAction === 'cancel' ? await onCancelOrder(order.num) : await onDeleteOrder(order.num);
+                          setActionBusy(false);
+                          if (error) setActionError(error);
+                          else setConfirmAction(null);
+                        }}
+                        style={{ border: 0, background: '#C41F27', color: '#fff', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', fontWeight: 700, cursor: actionBusy ? 'wait' : 'pointer' }}
+                      >
+                        {actionBusy ? 'Aguarde…' : confirmAction === 'cancel' ? 'Sim, cancelar' : 'Sim, excluir'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => { setConfirmAction(null); setActionError(''); }}
+                        style={{ border: '1px solid #E2DBD3', background: '#fff', color: '#1F1A17', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', fontWeight: 700 }}
+                      >
+                        Voltar
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {actionError && <p role="alert" style={{ margin: 0, color: '#8C141B', fontSize: '13px', fontWeight: 600 }}>{actionError}</p>}
+              </div>
+            )}
 
             {/* Items */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

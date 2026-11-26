@@ -162,13 +162,13 @@ export default function CaixaRelatorios({ orders }) {
                 <strong>#{o.num}</strong>
                 <span style={{ color: '#7A7068' }}>{o.time}</span>
                 <span>{o.type === 'delivery' ? `Entrega · ${o.bairro}` : 'Balcão'}</span>
-                <span style={{ color: '#4A423C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ color: '#4A423C', overflowWrap: 'anywhere', lineHeight: 1.4 }}>
                   {o.items.map((i) => i.t).join(', ')}
                 </span>
-                <span style={{ color: '#7A7068' }}>
-                  {o.pay === 'Fiado' ? `Fiado${o.fiadoPaid ? ' ✓' : ''}` : o.pay}
+                <span style={{ color: o.status === 'cancelled' ? '#A3161D' : '#7A7068', fontWeight: o.status === 'cancelled' ? 700 : 400 }}>
+                  {o.status === 'cancelled' ? 'Cancelado' : o.pay === 'Fiado' ? `Fiado${o.fiadoPaid ? ' ✓' : ''}` : o.pay}
                 </span>
-                <strong style={{ textAlign: 'right' }}>{formatMoney(o.total)}</strong>
+                <strong style={{ textAlign: 'right', ...(o.status === 'cancelled' ? { textDecoration: 'line-through', color: '#9A9089' } : {}) }}>{formatMoney(o.total)}</strong>
               </div>
             ))}
           </div>
