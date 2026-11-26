@@ -292,7 +292,9 @@ export default function CardapioAdmin({
                     ownerName={p.name}
                     ings={p.ings ?? []}
                     extras={p.extras ?? []}
-                    inherited={(() => { const c = categories.find((cat) => cat.id === p.catId); return c ? { ings: c.ings ?? [], extras: c.extras ?? [] } : null; })()}
+                    options={p.options ?? []}
+                    drink={categories.find((cat) => cat.id === p.catId)?.type === 'BEBIDA'}
+                    inherited={(() => { const c = categories.find((cat) => cat.id === p.catId); return c ? { ings: c.ings ?? [], extras: c.extras ?? [], options: c.options ?? [] } : null; })()}
                     busy={busy}
                     onSave={(changes) => onPatchProduct(p.id, changes)}
                   />

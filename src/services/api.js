@@ -16,6 +16,8 @@ export const mapCategoryFromApi = (category) => ({
   name: category.nome,
   active: category.ativo,
   ordem: category.ordem,
+  type: category.tipo ?? 'ALIMENTO',
+  options: Array.isArray(category.opcoes) ? [...category.opcoes] : [],
   ings: Array.isArray(category.ingredientes) ? [...category.ingredientes] : [],
   extras: expectArray(category.adicionais ?? [], 'adicionais da categoria').map((additional) => [
     additional.nome,
@@ -31,6 +33,7 @@ export const mapProductFromApi = (product) => ({
   desc: product.descricao ?? '',
   active: product.ativo,
   ings: Array.isArray(product.ingredientes) ? [...product.ingredientes] : [],
+  options: Array.isArray(product.opcoes) ? [...product.opcoes] : [],
   extras: expectArray(product.adicionais ?? [], 'adicionais').map((additional) => [
     additional.nome,
     finiteNumber(additional.preco, 'preço do adicional'),
@@ -60,6 +63,7 @@ export const productToApi = (product) => {
   if (product.desc !== undefined) payload.descricao = String(product.desc).trim() || null;
   if (product.active !== undefined) payload.ativo = product.active;
   if (product.ings !== undefined) payload.ingredientes = [...product.ings];
+  if (product.options !== undefined) payload.opcoes = [...product.options];
   if (product.extras !== undefined) {
     payload.adicionais = product.extras.map(([nome, preco]) => ({ nome, preco: finiteNumber(preco, 'preço do adicional') }));
   }
@@ -86,8 +90,10 @@ export const mapOrderFromApi = (order) => ({
   street: order.endereco ?? '',
   phone: order.telefone ?? '',
   items: expectArray(order.itens, 'itens do pedido').map((item) => ({
-    t: `${item.quantidade}x ${item.nome}`,
+    // Cada opção de bebida é uma unidade.
+    t: `${item.quantidade * Math.max(1, (item.opcoes ?? []).length)}x ${item.nome}`,
     mod: [
+      ...(item.opcoes ?? []),
       ...item.adicionais.map((adicional) => '+ ' + adicional.nome.toLowerCase()),
       ...item.ingredientesRetirados.map((nome) => 'sem ' + nome.toLowerCase()),
     ].join(', '),
@@ -149,6 +155,7 @@ export const orderToApi = ({ type, clientName, phone, bairroId, street, cart, pa
       quantidade: line.qty,
       ingredientesRetirados: [...line.removed],
       adicionais: [...line.added],
+      opcoes: [...(line.options ?? [])],
     })),
     formaPagamento: paymentToApi(paymentMethod),
   };
@@ -209,13 +216,15 @@ export function createApi({ baseUrl = optionalBaseUrl || '/api', fetchImpl = glo
     },
     async getCategorias(apenasAtivas = false) { return collection(`/categorias${areaQuery(apenasAtivas)}`, mapCategoryFromApi); },
     async getCategoriaById(id) { return mapCategoryFromApi(await request('GET', `/categorias/${id}`)); },
-    async createCategoria(data) { return mapCategoryFromApi(await request('POST', '/categorias', { nome: data.name, ordem: data.ordem })); },
+    async createCategoria(data) { return mapCategoryFromApi(await request('POST', '/categorias', { nome: data.name, ordem: data.ordem, ...(data.type ? { tipo: data.type } : {}) })); },
     async updateCategoria(id, data) {
       const payload = {};
       if (data.name !== undefined) payload.nome = data.name;
       if (data.active !== undefined) payload.ativo = data.active;
       if (data.nome !== undefined) payload.nome = data.nome;
       if (data.ativo !== undefined) payload.ativo = data.ativo;
+      if (data.type !== undefined) payload.tipo = data.type;
+      if (data.options !== undefined) payload.opcoes = [...data.options];
       if (data.ings !== undefined) payload.ingredientes = [...data.ings];
       if (data.extras !== undefined) {
         payload.adicionais = data.extras.map(([nome, preco]) => ({ nome, preco: finiteNumber(preco, 'preço do adicional') }));

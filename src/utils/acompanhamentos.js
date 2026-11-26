@@ -3,7 +3,20 @@
 // um adicional do produto com o mesmo nome de um da categoria substitui o preço dele.
 const key = (text) => String(text).trim().toLocaleLowerCase('pt-BR');
 
+// Bebida só tem opções (sabores, marcas); alimento tem acompanhamentos e adicionais.
+export const isDrink = (category) => category?.type === 'BEBIDA';
+
 export function combineWithCategory(category, product) {
+  if (isDrink(category)) {
+    const seenOptions = new Set();
+    const options = [...(category.options ?? []), ...(product.options ?? [])].filter((option) => {
+      if (seenOptions.has(key(option))) return false;
+      seenOptions.add(key(option));
+      return true;
+    });
+    return { ...product, ings: [], extras: [], options };
+  }
+
   const baseIngs = category?.ings ?? [];
   const baseExtras = category?.extras ?? [];
 
@@ -20,5 +33,5 @@ export function combineWithCategory(category, product) {
   const fromCategory = new Set(baseExtras.map((extra) => key(extra[0])));
   extras.push(...(product.extras ?? []).filter((extra) => !fromCategory.has(key(extra[0]))));
 
-  return { ...product, ings, extras };
+  return { ...product, ings, extras, options: [] };
 }

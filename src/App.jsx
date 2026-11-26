@@ -234,11 +234,11 @@ export default function App() {
   const handleSaveCategory = async (catData) => {
     return runMutation(async () => {
       if (catData.id) {
-        const updated = await api.updateCategoria(catData.id, { name: catData.name });
+        const updated = await api.updateCategoria(catData.id, { name: catData.name, type: catData.type });
         setCategories((prev) => prev.map((category) => category.id === updated.id ? updated : category).sort((a, b) => a.ordem - b.ordem));
         showToast('Categoria atualizada com sucesso.');
       } else {
-        const created = await api.createCategoria({ name: catData.name, ordem: categories.length + 1 });
+        const created = await api.createCategoria({ name: catData.name, ordem: categories.length + 1, type: catData.type });
         setCategories((prev) => [...prev, created].sort((a, b) => a.ordem - b.ordem));
         showToast('Categoria criada com sucesso.');
       }

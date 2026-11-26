@@ -45,7 +45,7 @@ test('order payload follows the API contract for pickup and delivery', () => {
   const cart = [{ productId: 1, qty: 2, removed: ['Tomate'], added: ['Bacon'] }];
   assert.deepEqual(
     orderToApi({ type: 'balcao', clientName: ' Ana ', phone: '(51) 9999', bairroId: '3', street: 'Rua A', cart, paymentMethod: 'Crédito', cashGiven: '' }),
-    { tipo: 'RETIRADA', nomeCliente: 'Ana', telefone: null, bairroId: null, endereco: null, itens: [{ produtoId: 1, quantidade: 2, ingredientesRetirados: ['Tomate'], adicionais: ['Bacon'] }], formaPagamento: 'CREDITO' },
+    { tipo: 'RETIRADA', nomeCliente: 'Ana', telefone: null, bairroId: null, endereco: null, itens: [{ produtoId: 1, quantidade: 2, ingredientesRetirados: ['Tomate'], adicionais: ['Bacon'], opcoes: [] }], formaPagamento: 'CREDITO' },
   );
   const delivery = orderToApi({ type: 'delivery', clientName: 'Ana', phone: '', bairroId: '3', street: ' Rua A, 10 ', cart, paymentMethod: 'Dinheiro', cashGiven: '100' });
   assert.equal(delivery.tipo, 'ENTREGA');
@@ -81,4 +81,15 @@ test('dashboard and closing mappings translate payment codes and keep zero value
   assert.equal(metrics.topProduct, null);
   const closing = mapClosingFromApi({ noite: '2026-11-19', totalTaxasEntrega: 5, motoboys: [{ id: 1, nome: 'Cleber', entregas: 1, valorFixoNoite: 40, taxasEntrega: 5, totalAPagar: 45 }] });
   assert.deepEqual(closing.motoboys[0], { id: 1, name: 'Cleber', deliveries: 1, baseFee: 40, fees: 5, total: 45 });
+});
+
+test('beverage options go to the API and come back as units on the ticket', () => {
+  const payload = orderToApi({ type: 'balcao', clientName: 'Ana', phone: '', bairroId: '', street: '', cart: [{ productId: 2, qty: 1, removed: [], added: [], options: ['Coca-Cola', 'Guaraná'] }], paymentMethod: 'PIX', cashGiven: '' });
+  assert.deepEqual(payload.itens[0].opcoes, ['Coca-Cola', 'Guaraná']);
+  const order = mapOrderFromApi({
+    id: 1, numero: 1, criadoEm: '2026-11-26T22:00:00Z', tipo: 'RETIRADA', status: 'EM_PREPARO', nomeCliente: 'Ana', telefone: null,
+    bairro: null, endereco: null, taxaEntrega: 0, total: 15, formaPagamento: 'PIX', valorRecebido: null, motoboy: null,
+    itens: [{ nome: 'Refrigerante lata', quantidade: 1, subtotal: 15, adicionais: [], ingredientesRetirados: [], opcoes: ['Coca-Cola', 'Guaraná'] }],
+  });
+  assert.deepEqual(order.items, [{ t: '2x Refrigerante lata', mod: 'Coca-Cola, Guaraná', v: 15 }]);
 });

@@ -29,9 +29,10 @@ export default function CategoriasAdmin({ categories, products, onOpenNewCategor
           const isActive = cat.active !== false;
           const count = products.filter((p) => p.catId === cat.id).length;
           const isExpanded = expandedId === cat.id;
-          const baseCount = (cat.ings?.length ?? 0) + (cat.extras?.length ?? 0);
+          const drink = cat.type === 'BEBIDA';
+          const baseCount = drink ? (cat.options?.length ?? 0) : (cat.ings?.length ?? 0) + (cat.extras?.length ?? 0);
           return <div key={cat.id} style={{ borderTop: '1px solid #F1ECE6' }}><div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 100px 120px minmax(240px, 1fr)', gap: '12px', padding: '13px 18px', alignItems: 'center' }}>
-            <strong style={{ fontSize: '14px', minWidth: 0, overflowWrap: 'anywhere' }}>{cat.name}</strong>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}><strong style={{ fontSize: '14px', overflowWrap: 'anywhere' }}>{cat.name}</strong><span style={{ fontSize: '12px', color: '#7A7068' }}>{drink ? 'Bebida' : 'Alimento'}</span></span>
             <span style={{ justifySelf: 'start', background: isActive ? '#EAF6EC' : '#F4F0EB', color: isActive ? '#237A33' : '#7A7068', borderRadius: '999px', padding: '5px 9px', fontSize: '12px', fontWeight: 700 }}>{isActive ? 'Ativa' : 'Inativa'}</span>
             <span style={{ fontSize: '13px', color: '#6E655E' }}>{count} {count === 1 ? 'produto' : 'produtos'}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -45,7 +46,7 @@ export default function CategoriasAdmin({ categories, products, onOpenNewCategor
           </div>
           {isExpanded && <div style={{ padding: '4px 18px 16px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#FAFAFA' }}>
             <span style={{ fontSize: '12px', color: '#6F5200', background: '#FFF6DB', borderRadius: '8px', padding: '8px 10px' }}>Base de {cat.name}: vale para todos os produtos da categoria. Cada produto ainda pode ter os seus, no Cardápio.</span>
-            <AcompanhamentosEditor ownerName={cat.name} ings={cat.ings ?? []} extras={cat.extras ?? []} busy={busy} onSave={(changes) => onPatchCategory(cat.id, changes)} />
+            <AcompanhamentosEditor ownerName={cat.name} drink={drink} ings={cat.ings ?? []} extras={cat.extras ?? []} options={cat.options ?? []} busy={busy} onSave={(changes) => onPatchCategory(cat.id, changes)} />
           </div>}
           </div>;
         })}

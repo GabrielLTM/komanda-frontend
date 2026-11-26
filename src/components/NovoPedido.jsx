@@ -72,6 +72,9 @@ export default function NovoPedido({
     return p.price + extrasTotal;
   };
 
+  // Cada opção de bebida escolhida conta como uma unidade (Coca-Cola e Guaraná = 2 bebidas).
+  const lineUnits = (line) => line.qty * Math.max(1, (line.options ?? []).length);
+
   const getProductTotalInCart = (prodId) => {
     return cart
       .filter((l) => l.productId === prodId)
@@ -81,7 +84,7 @@ export default function NovoPedido({
   const handleAddProduct = (prodId) => {
     setStep('itens');
     const existingIndex = cart.findIndex(
-      (l) => l.productId === prodId && l.added.length === 0 && l.removed.length === 0
+      (l) => l.productId === prodId && l.added.length === 0 && l.removed.length === 0 && (l.options ?? []).length === 0
     );
     if (existingIndex >= 0) {
       setCart((prev) =>
@@ -96,6 +99,7 @@ export default function NovoPedido({
           qty: 1,
           added: [],
           removed: [],
+          options: [],
         },
       ]);
     }
@@ -135,7 +139,17 @@ export default function NovoPedido({
     );
   };
 
-  const subtotal = cart.reduce((sum, l) => sum + l.qty * getLineUnitPrice(l), 0);
+  const handleToggleOption = (key, option) => {
+    setCart((prev) =>
+      prev.map((l) => {
+        if (l.key !== key) return l;
+        const current = l.options ?? [];
+        return { ...l, options: current.includes(option) ? current.filter((o) => o !== option) : [...current, option] };
+      })
+    );
+  };
+
+  const subtotal = cart.reduce((sum, l) => sum + lineUnits(l) * getLineUnitPrice(l), 0);
   const deliveryFee =
     orderType === 'delivery'
       ? (selectedBairro?.fee || 0)
@@ -193,12 +207,13 @@ export default function NovoPedido({
       items: cart.map((line) => {
         const p = getProduct(line.productId);
         const mods = [
+          ...(line.options ?? []),
           ...line.added.map((n) => '+ ' + n.toLowerCase()),
           ...line.removed.map((r) => 'sem ' + r.toLowerCase()),
         ].join(', ');
         return {
-          t: `${line.qty}x ${p.name}`,
-          v: getLineUnitPrice(line) * line.qty,
+          t: `${lineUnits(line)}x ${p.name}`,
+          v: getLineUnitPrice(line) * lineUnits(line),
           mod: mods,
         };
       }),
@@ -393,9 +408,10 @@ export default function NovoPedido({
               const isCustomOpen = openCustomLineKey === line.key;
               const hasIngredients = product.ings && product.ings.length > 0;
               const hasExtras = product.extras && product.extras.length > 0;
-              const canCustomize = hasIngredients || hasExtras;
+              const hasOptions = product.options && product.options.length > 0;
+              const canCustomize = hasIngredients || hasExtras || hasOptions;
               const lineUnitPrice = getLineUnitPrice(line);
-              const lineTotal = lineUnitPrice * line.qty;
+              const lineTotal = lineUnitPrice * lineUnits(line);
 
               return (
                 <div
@@ -437,6 +453,11 @@ export default function NovoPedido({
                     {/* Item Details */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                       <span style={{ fontSize: '14px', fontWeight: 600 }}>{product.name}</span>
+                      {(line.options ?? []).length > 0 && (
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#2F5D9E' }}>
+                          {line.options.join(', ')}
+                        </span>
+                      )}
                       {line.added.length > 0 && (
                         <span style={{ fontSize: '12px', fontWeight: 700, color: '#237A33' }}>
                           {line.added.map((e) => '+ ' + e.toLowerCase()).join(', ')}
@@ -488,7 +509,37 @@ export default function NovoPedido({
                           </button>
                         </>
                       )}
-                      {canCustomize && <span style={{ fontSize: '12px', color: '#7A7068' }}>As escolhas valem para {line.qty === 1 ? 'esta unidade' : `as ${line.qty} unidades`} deste item.</span>}
+                      {canCustomize && !hasOptions && <span style={{ fontSize: '12px', color: '#7A7068' }}>As escolhas valem para {line.qty === 1 ? 'esta unidade' : `as ${line.qty} unidades`} deste item.</span>}
+                      {hasOptions && (
+                        <>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A7068', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                            Opções · cada uma soma {formatMoney(product.price)}
+                          </span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {product.options.map((option) => {
+                              const isChosen = (line.options ?? []).includes(option);
+                              return (
+                                <button
+                                  key={option}
+                                  aria-pressed={isChosen}
+                                  onClick={() => handleToggleOption(line.key, option)}
+                                  style={{
+                                    border: isChosen ? '1px solid #9DB8E3' : '1px solid #E2DBD3',
+                                    background: isChosen ? '#EDF3FC' : '#fff',
+                                    color: isChosen ? '#2F5D9E' : '#4A423C',
+                                    borderRadius: '999px',
+                                    padding: '6px 11px',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {option}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
                       {hasIngredients && (
                         <>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A7068', textTransform: 'uppercase', letterSpacing: '.04em' }}>
@@ -606,7 +657,7 @@ export default function NovoPedido({
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: '#FAF8F5', borderRadius: '10px', padding: '10px 12px' }}>
             <span style={{ fontSize: '13px', color: '#4A423C' }}>
-              {cart.reduce((sum, l) => sum + l.qty, 0)} {cart.reduce((sum, l) => sum + l.qty, 0) === 1 ? 'item' : 'itens'} · {formatMoney(subtotal)}
+              {cart.reduce((sum, l) => sum + lineUnits(l), 0)} {cart.reduce((sum, l) => sum + lineUnits(l), 0) === 1 ? 'item' : 'itens'} · {formatMoney(subtotal)}
             </span>
             <button
               type="button"

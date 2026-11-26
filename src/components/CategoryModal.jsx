@@ -12,6 +12,8 @@ export default function CategoryModal({
 }) {
   const [name, setName] = useState(categoryToEdit ? categoryToEdit.name : '');
   const [tried, setTried] = useState(false);
+  const [type, setType] = useState(categoryToEdit?.type ?? 'ALIMENTO');
+  const typeChanged = Boolean(categoryToEdit) && type !== (categoryToEdit.type ?? 'ALIMENTO');
   const { dialogRef, onKeyDown } = useAccessibleDialog(() => { if (!busy) onClose(); });
 
   const cleanName = name.trim();
@@ -34,7 +36,7 @@ export default function CategoryModal({
       setTried(true);
       return;
     }
-    await onSave(categoryToEdit ? { ...categoryToEdit, name: cleanName } : { name: cleanName });
+    await onSave(categoryToEdit ? { ...categoryToEdit, name: cleanName, type } : { name: cleanName, type });
   };
 
   return (
@@ -107,6 +109,24 @@ export default function CategoryModal({
             }}
           />
           <span role="alert" style={{ minHeight: '18px', fontSize: '12px', color: '#C41F27' }}>{validationError}</span>
+
+          <span id="category-type-label" style={{ fontSize: '13px', fontWeight: 700, color: '#4A423C' }}>Tipo</span>
+          <div role="radiogroup" aria-labelledby="category-type-label" style={{ display: 'flex', gap: '8px' }}>
+            {[['ALIMENTO', 'Alimento', 'Acompanhamentos e adicionais'], ['BEBIDA', 'Bebida', 'Opções, como sabores e marcas']].map(([value, label, help]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={type === value}
+                onClick={() => setType(value)}
+                style={{ flex: 1, textAlign: 'left', border: type === value ? '1.5px solid #C41F27' : '1px solid #E2DBD3', background: type === value ? '#FFF5F5' : '#fff', borderRadius: '10px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}
+              >
+                <strong style={{ fontSize: '14px' }}>{label}</strong>
+                <span style={{ fontSize: '12px', color: '#7A7068' }}>{help}</span>
+              </button>
+            ))}
+          </div>
+          {typeChanged && <span role="status" style={{ fontSize: '12px', color: '#6F5200', background: '#FFF6DB', borderRadius: '8px', padding: '8px 10px' }}>Trocar o tipo apaga a base atual da categoria. Os itens próprios de cada produto continuam cadastrados.</span>}
           {serverError && <span role="alert" style={{ fontSize: '12px', color: '#8C141B' }}>{serverError}</span>}
         </div>
 

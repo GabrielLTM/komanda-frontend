@@ -11,10 +11,17 @@ const hint = { fontSize: '12px', color: '#7A7068' };
 // Edita acompanhamentos (que o atendente pode tirar) e adicionais pagos.
 // Serve para a categoria, que define a base, e para o produto, que guarda só o que é dele.
 // `inherited` mostra, sem edição, o que o produto já recebe da categoria.
-export default function AcompanhamentosEditor({ ownerName, ings = [], extras = [], inherited = null, busy = false, onSave }) {
+export default function AcompanhamentosEditor({ ownerName, ings = [], extras = [], options = [], drink = false, inherited = null, busy = false, onSave }) {
   const [newIng, setNewIng] = useState('');
   const [newExName, setNewExName] = useState('');
   const [newExPrice, setNewExPrice] = useState('');
+  const [newOption, setNewOption] = useState('');
+
+  const addOption = async () => {
+    const name = newOption.trim();
+    if (!name || options.some((o) => o.toLowerCase() === name.toLowerCase())) return;
+    if (await onSave({ options: [...options, name] })) setNewOption('');
+  };
 
   const addIngredient = async () => {
     const name = newIng.trim();
@@ -31,6 +38,43 @@ export default function AcompanhamentosEditor({ ownerName, ings = [], extras = [
       setNewExPrice('');
     }
   };
+
+  if (drink) {
+    const inheritedOptions = inherited?.options ?? [];
+    return (
+      <>
+        {inheritedOptions.length > 0 && (
+          <span style={{ ...hint, background: '#FFF6DB', borderRadius: '8px', padding: '8px 10px', color: '#6F5200' }}>
+            Da categoria: {inheritedOptions.join(', ')}. Aqui ficam só as opções específicas deste produto.
+          </span>
+        )}
+        <span style={hint}>Opções que o atendente escolhe no pedido, como sabores ou marcas. Cada opção escolhida conta como uma unidade.</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+          {options.map((option) => (
+            <span key={option} style={{ ...chipBase, gap: '4px', border: '1px solid #C9D8F0', background: '#F2F6FC' }}>
+              {option}
+              <button type="button" disabled={busy} aria-label={`Remover opção ${option} de ${ownerName}`} onClick={() => onSave({ options: options.filter((o) => o !== option) })} style={removeButton}>
+                <X size={13} />
+              </button>
+            </span>
+          ))}
+          {options.length === 0 && <span style={{ fontSize: '13px', color: '#9A9089' }}>Nenhuma opção cadastrada.</span>}
+        </div>
+        <div style={{ display: 'flex', gap: '8px', maxWidth: '360px' }}>
+          <input
+            aria-label={`Nova opção de ${ownerName}`}
+            disabled={busy}
+            value={newOption}
+            onChange={(e) => setNewOption(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addOption(); }}
+            placeholder="Nova opção (ex.: Coca-Cola)"
+            style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+          />
+          <button type="button" disabled={busy} onClick={addOption} style={addButton}>Adicionar</button>
+        </div>
+      </>
+    );
+  }
 
   const hasInherited = inherited && (inherited.ings.length > 0 || inherited.extras.length > 0);
 
