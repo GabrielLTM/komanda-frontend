@@ -300,6 +300,12 @@ export default function App() {
     showToast(updated.active ? 'Categoria ativada.' : 'Categoria desativada.');
   });
 
+  const handlePatchCategory = (id, changes) => runMutation(async () => {
+    const updated = await api.updateCategoria(id, changes);
+    setCategories((prev) => prev.map((item) => item.id === id ? updated : item));
+    showToast('Base da categoria atualizada.');
+  });
+
   const handleReorderCategories = (ids) => runMutation(async () => {
     const updated = await api.reordenarCategorias(ids);
     setCategories(updated.sort((a, b) => a.ordem - b.ordem));
@@ -431,6 +437,7 @@ export default function App() {
             onToggleCategory={handleToggleCategory}
             onReorderCategories={handleReorderCategories}
             onDeleteCategory={handleDeleteCategory}
+            onPatchCategory={handlePatchCategory}
           />
         )}
 

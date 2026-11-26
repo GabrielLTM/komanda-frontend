@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Plus, Minus, Printer, Send, ArrowLeft, ArrowRight } from 'lucide-react';
 import { formatMoney, formatPhone } from '../utils/format';
+import { combineWithCategory } from '../utils/acompanhamentos';
 
 export default function NovoPedido({
   products,
@@ -45,7 +46,11 @@ export default function NovoPedido({
   const activeCategoryIds = new Set(categories.filter((c) => c.active !== false).map((c) => c.id));
   const activeCategoriesList = [{ id: 0, name: 'Todos' }, ...categories.filter((c) => c.active !== false)];
 
-  const getProduct = (id) => products.find((p) => p.id === id);
+  // Na comanda, o produto oferece os acompanhamentos e adicionais da categoria mais os dele.
+  const getProduct = (id) => {
+    const product = products.find((p) => p.id === id);
+    return product && combineWithCategory(categories.find((c) => c.id === product.catId), product);
+  };
 
   const filteredProducts = products.filter((p) => {
     if (!p.active || !activeCategoryIds.has(p.catId)) return false;

@@ -16,6 +16,11 @@ export const mapCategoryFromApi = (category) => ({
   name: category.nome,
   active: category.ativo,
   ordem: category.ordem,
+  ings: Array.isArray(category.ingredientes) ? [...category.ingredientes] : [],
+  extras: expectArray(category.adicionais ?? [], 'adicionais da categoria').map((additional) => [
+    additional.nome,
+    finiteNumber(additional.preco, 'preço do adicional'),
+  ]),
 });
 
 export const mapProductFromApi = (product) => ({
@@ -211,6 +216,10 @@ export function createApi({ baseUrl = optionalBaseUrl || '/api', fetchImpl = glo
       if (data.active !== undefined) payload.ativo = data.active;
       if (data.nome !== undefined) payload.nome = data.nome;
       if (data.ativo !== undefined) payload.ativo = data.ativo;
+      if (data.ings !== undefined) payload.ingredientes = [...data.ings];
+      if (data.extras !== undefined) {
+        payload.adicionais = data.extras.map(([nome, preco]) => ({ nome, preco: finiteNumber(preco, 'preço do adicional') }));
+      }
       return mapCategoryFromApi(await request('PATCH', `/categorias/${id}`, payload));
     },
     async reordenarCategorias(ids) { return expectArray(await request('PATCH', '/categorias/ordem', { ids }), 'categorias').map(mapCategoryFromApi); },

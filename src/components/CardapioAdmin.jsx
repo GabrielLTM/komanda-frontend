@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, Plus, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { formatMoney } from '../utils/format';
+import AcompanhamentosEditor from './AcompanhamentosEditor';
 
 export default function CardapioAdmin({
   initialExpandedProductId = null,
@@ -29,9 +30,6 @@ export default function CardapioAdmin({
     expandedRowRef.current?.querySelector('input')?.focus({ preventScroll: true });
   }, [expandedProductId, initialExpandedProductId]);
 
-  const [newIngInputs, setNewIngInputs] = useState({});
-  const [newExNameInputs, setNewExNameInputs] = useState({});
-  const [newExPriceInputs, setNewExPriceInputs] = useState({});
 
   const activeCount = products.filter((p) => p.active).length;
   const pausedCount = products.filter((p) => !p.active).length;
@@ -63,38 +61,6 @@ export default function CardapioAdmin({
     if (!prod || isNaN(parsed) || parsed <= 0 || parsed === prod.price) return;
 
     await onPatchProduct(id, { price: parsed });
-  };
-
-  const handleAddIngredient = async (productId) => {
-    const ingName = (newIngInputs[productId] || '').trim();
-    if (!ingName) return;
-    const product = products.find((p) => p.id === productId);
-    if (!product || product.ings.includes(ingName)) return;
-    if (await onPatchProduct(productId, { ings: [...product.ings, ingName] })) setNewIngInputs((prev) => ({ ...prev, [productId]: '' }));
-  };
-
-  const handleDeleteIngredient = async (productId, ingName) => {
-    const product = products.find((p) => p.id === productId);
-    if (product) await onPatchProduct(productId, { ings: product.ings.filter((i) => i !== ingName) });
-  };
-
-  const handleAddExtra = async (productId) => {
-    const exName = (newExNameInputs[productId] || '').trim();
-    const exPriceStr = newExPriceInputs[productId] || '';
-    const exPrice = parseFloat(exPriceStr.replace(',', '.'));
-    if (!exName || isNaN(exPrice)) return;
-
-    const product = products.find((p) => p.id === productId);
-    if (!product || product.extras.some((e) => e[0] === exName)) return;
-    if (await onPatchProduct(productId, { extras: [...product.extras, [exName, exPrice]] })) {
-      setNewExNameInputs((prev) => ({ ...prev, [productId]: '' }));
-      setNewExPriceInputs((prev) => ({ ...prev, [productId]: '' }));
-    }
-  };
-
-  const handleDeleteExtra = async (productId, extraName) => {
-    const product = products.find((p) => p.id === productId);
-    if (product) await onPatchProduct(productId, { extras: product.extras.filter((e) => e[0] !== extraName) });
   };
 
   return (
@@ -322,153 +288,14 @@ export default function CardapioAdmin({
               {/* Accordion Content */}
               {isExpanded && (
                 <div id={`product-options-${p.id}`} ref={expandedRowRef} style={{ padding: '4px 18px 16px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#FAFAFA' }}>
-                  {/* Acompanhamentos */}
-                  <span style={{ fontSize: '12px', color: '#7A7068' }}>
-                    Acompanhamentos que o atendente pode tirar no pedido
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                    {p.ings && p.ings.map((ing) => (
-                      <span
-                        key={ing}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          border: '1px solid #E2DBD3',
-                          borderRadius: '999px',
-                          padding: '4px 4px 4px 12px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          background: '#FAF8F5',
-                        }}
-                      >
-                        {ing}
-                        <button
-                          type="button"
-                          disabled={busy}
-                          aria-label={`Remover ${ing} de ${p.name}`}
-                          onClick={() => handleDeleteIngredient(p.id, ing)}
-                          style={{
-                            border: 0,
-                            background: 'none',
-                            width: '22px',
-                            height: '22px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#7A7068',
-                          }}
-                        >
-                          <X size={13} />
-                        </button>
-                      </span>
-                    ))}
-                    {(!p.ings || p.ings.length === 0) && (
-                      <span style={{ fontSize: '13px', color: '#9A9089' }}>
-                        Nenhum acompanhamento cadastrado.
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', maxWidth: '360px' }}>
-                    <input
-                      aria-label={`Novo acompanhamento de ${p.name}`}
-                      disabled={busy}
-                      value={newIngInputs[p.id] || ''}
-                      onChange={(e) => setNewIngInputs({ ...newIngInputs, [p.id]: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddIngredient(p.id);
-                      }}
-                      placeholder="Novo acompanhamento"
-                      style={{ flex: 1, minWidth: 0, border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px' }}
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => handleAddIngredient(p.id)}
-                      style={{ border: 0, background: '#1F1A17', color: '#fff', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700 }}
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-
-                  {/* Adicionais Pagos */}
-                  <span style={{ fontSize: '12px', color: '#7A7068', marginTop: '6px' }}>
-                    Adicionais pagos que o atendente pode incluir
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                    {p.extras && p.extras.map(([extraName, extraPrice]) => (
-                      <span
-                        key={extraName}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          border: '1px solid #BFE3C5',
-                          borderRadius: '999px',
-                          padding: '4px 4px 4px 12px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          background: '#F2FAF3',
-                        }}
-                      >
-                        {extraName}
-                        <span style={{ color: '#237A33', fontWeight: 700 }}>
-                          +{formatMoney(extraPrice)}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          aria-label={`Remover adicional ${extraName} de ${p.name}`}
-                          onClick={() => handleDeleteExtra(p.id, extraName)}
-                          style={{
-                            border: 0,
-                            background: 'none',
-                            width: '22px',
-                            height: '22px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#7A7068',
-                          }}
-                        >
-                          <X size={13} />
-                        </button>
-                      </span>
-                    ))}
-                    {(!p.extras || p.extras.length === 0) && (
-                      <span style={{ fontSize: '13px', color: '#9A9089' }}>
-                        Nenhum adicional cadastrado.
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', maxWidth: '420px' }}>
-                    <input
-                      aria-label={`Nome do adicional de ${p.name}`}
-                      disabled={busy}
-                      value={newExNameInputs[p.id] || ''}
-                      onChange={(e) => setNewExNameInputs({ ...newExNameInputs, [p.id]: e.target.value })}
-                      placeholder="Novo adicional"
-                      style={{ flex: 1, minWidth: 0, border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px' }}
-                    />
-                    <input
-                      aria-label={`Preço do adicional de ${p.name}`}
-                      disabled={busy}
-                      value={newExPriceInputs[p.id] || ''}
-                      onChange={(e) => setNewExPriceInputs({ ...newExPriceInputs, [p.id]: e.target.value })}
-                      placeholder="R$ 0,00"
-                      style={{ width: '80px', border: '1px solid #E2DBD3', borderRadius: '8px', padding: '8px 10px', fontSize: '13px' }}
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => handleAddExtra(p.id)}
-                      style={{ border: 0, background: '#1F1A17', color: '#fff', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700 }}
-                    >
-                      Adicionar
-                    </button>
-                  </div>
+                  <AcompanhamentosEditor
+                    ownerName={p.name}
+                    ings={p.ings ?? []}
+                    extras={p.extras ?? []}
+                    inherited={(() => { const c = categories.find((cat) => cat.id === p.catId); return c ? { ings: c.ings ?? [], extras: c.extras ?? [] } : null; })()}
+                    busy={busy}
+                    onSave={(changes) => onPatchProduct(p.id, changes)}
+                  />
                 </div>
               )}
             </div>
