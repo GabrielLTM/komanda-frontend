@@ -13,6 +13,9 @@ import ProductModal from './components/ProductModal';
 import Toast from './components/Toast';
 import { api } from './services/api';
 
+// Intervalo da atualização automática dos dados.
+const REFRESH_INTERVAL_MS = 10000;
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('pedido');
   const [customizationProductId, setCustomizationProductId] = useState(null);
@@ -76,9 +79,48 @@ export default function App() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Atualização silenciosa: traz o que outros atendentes mudaram, sem recarregar a página.
+  // Roda a cada intervalo e quando a aba volta a ficar visível; descarta o resultado
+  // se uma gravação aconteceu no meio, para não sobrescrever o que acabou de ser salvo.
+  const refreshSequence = useRef(0);
+  const dataVersion = useRef(0);
+  const refreshData = async () => {
+    if (mutationLock.current || document.hidden) return;
+    const sequence = ++refreshSequence.current;
+    const version = dataVersion.current;
+    try {
+      const [cats, prods, mb, areas, pedidos] = await Promise.all([
+        api.getCategorias(), api.getProdutos(), api.getMotoboys(), api.getBairros(), api.getPedidos().catch(() => null),
+      ]);
+      if (sequence !== refreshSequence.current || version !== dataVersion.current) return;
+      setCategories(cats.sort((a, b) => a.ordem - b.ordem));
+      setProducts(prods);
+      setMotoboys(mb);
+      setBairros(areas);
+      if (pedidos !== null) setOrders((prev) => pedidos.map((o) => ({ ...o, fiadoPaid: prev.find((p) => p.id === o.id)?.fiadoPaid ?? false })));
+      setOrdersAvailable(pedidos !== null);
+      setLoadError('');
+    } catch {
+      // Falha passageira de rede: a próxima rodada tenta de novo.
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(refreshData, REFRESH_INTERVAL_MS);
+    const onVisible = () => { if (!document.hidden) refreshData(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, []);
+
   const runMutation = async (action) => {
     if (mutationLock.current) return false;
     mutationLock.current = true;
+    dataVersion.current += 1;
     setMutationBusy(true);
     setMutationError('');
     try {
