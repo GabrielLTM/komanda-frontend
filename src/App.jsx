@@ -117,7 +117,7 @@ export default function App() {
   const openOrdersCount = orders.filter((o) => o.status === 'prod' || o.status === 'ready').length;
 
   const handleFinishOrder = (data) => runMutation(async () => {
-    const created = await api.createPedido(data);
+    const created = await api.createPedido({ ...data, waitMinutes });
     setOrders((prev) => [...prev, created]);
     setCart([]);
     showToast(`Pedido #${created.num} enviado para a cozinha.`);
@@ -157,6 +157,36 @@ export default function App() {
       });
     }
     replaceOrder(num, patch);
+  };
+
+  // Cancelar mantém o registro (fica fora do quadro); excluir apaga um pedido lançado por engano.
+  // Devolvem null quando deu certo ou a mensagem de erro para a janela do pedido mostrar.
+  const handleCancelOrder = async (num) => {
+    const order = orders.find((o) => o.num === num);
+    if (!order) return 'Pedido não encontrado. Atualize a tela.';
+    try {
+      const updated = await api.updatePedidoStatus(order.id, 'cancelled');
+      replaceOrder(num, { ...updated, fiadoPaid: order.fiadoPaid });
+      setDetailOrder(null);
+      showToast(`Pedido #${num} cancelado.`);
+      return null;
+    } catch (err) {
+      return err.message || 'Não foi possível cancelar o pedido.';
+    }
+  };
+
+  const handleDeleteOrder = async (num) => {
+    const order = orders.find((o) => o.num === num);
+    if (!order) return 'Pedido não encontrado. Atualize a tela.';
+    try {
+      await api.deletePedido(order.id);
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      setDetailOrder(null);
+      showToast(`Pedido #${num} excluído.`);
+      return null;
+    } catch (err) {
+      return err.message || 'Não foi possível excluir o pedido.';
+    }
   };
 
   const handleSaveCategory = async (catData) => {
@@ -326,6 +356,7 @@ export default function App() {
             onUpdateOrder={handleUpdateOrder}
             motoboys={motoboys}
             onOpenDetail={handleOpenOrderDetail}
+            waitMinutes={waitMinutes}
           />
         )}
 
@@ -399,6 +430,8 @@ export default function App() {
           motoboys={motoboys}
           onClose={() => setDetailOrder(null)}
           onUpdateOrder={handleUpdateOrder}
+          onCancelOrder={handleCancelOrder}
+          onDeleteOrder={handleDeleteOrder}
           onPrintToast={(msg) => showToast(msg)}
         />
       )}

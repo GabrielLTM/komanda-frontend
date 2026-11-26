@@ -1,14 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Printer, ArrowRight, CheckCircle2, Bike } from 'lucide-react';
 import { formatMoney } from '../utils/format';
+import { ordenarPorPrazo, situacaoDoPrazo } from '../utils/prazo';
+
+// Cores do card conforme o prazo de entrega.
+const CORES_PRAZO = {
+  perto: { fundo: '#FFF6DB', borda: '#F5B800', texto: '#7A5A00' },
+  atrasado: { fundo: '#FDECEC', borda: '#C41F27', texto: '#A3161D' },
+};
+
+function textoDoPrazo(situacao) {
+  if (situacao.estado === 'atrasado') return situacao.minutos === 0 ? 'Atrasado' : `Atrasado ${situacao.minutos} min`;
+  return `Faltam ${situacao.minutos} min`;
+}
 
 export default function QuadroPedidos({
   orders,
   onUpdateOrder,
   motoboys,
   onOpenDetail,
+  waitMinutes,
 }) {
   const [draggedOrderNum, setDraggedOrderNum] = useState(null);
+  // Relógio do quadro: atualiza as cores do prazo a cada 30 segundos.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   const [overColId, setOverColId] = useState(null);
 
   const COLUMNS = [
@@ -44,7 +63,8 @@ export default function QuadroPedidos({
       {/* 3 Columns Grid */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', alignItems: 'stretch' }}>
         {COLUMNS.map((col, colIdx) => {
-          const colOrders = orders.filter((o) => o.status === col.id);
+          // Menor tempo até o prazo primeiro; empate pela ordem de entrada.
+          const colOrders = ordenarPorPrazo(orders.filter((o) => o.status === col.id), waitMinutes, now);
           const isOver = overColId === col.id;
 
           return (
@@ -109,6 +129,8 @@ export default function QuadroPedidos({
                 const nextCol = COLUMNS[colIdx + 1];
                 const needMoto = isDelivery && !o.moto && o.status !== 'done';
                 const isBeingDragged = draggedOrderNum === o.num;
+                const prazo = situacaoDoPrazo(o, waitMinutes, now);
+                const corPrazo = prazo ? CORES_PRAZO[prazo.estado] : null;
 
                 return (
                   <div
@@ -125,10 +147,10 @@ export default function QuadroPedidos({
                     }}
                     onClick={() => onOpenDetail(o.num)}
                     style={{
-                      background: '#fff',
-                      border: '1px solid #ECE6DF',
+                      background: corPrazo ? corPrazo.fundo : '#fff',
+                      border: corPrazo ? `2px solid ${corPrazo.borda}` : '1px solid #ECE6DF',
                       borderRadius: '12px',
-                      padding: '10px 12px',
+                      padding: corPrazo ? '9px 11px' : '10px 12px',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '10px',
@@ -148,6 +170,21 @@ export default function QuadroPedidos({
                           <span>{o.time}</span>
                         </div>
                       </div>
+                      {prazo && (
+                        <span
+                          style={{
+                            alignSelf: 'flex-start',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            borderRadius: '6px',
+                            padding: '3px 8px',
+                            background: corPrazo ? corPrazo.borda : '#F4F0EB',
+                            color: corPrazo ? (prazo.estado === 'perto' ? '#3D2E00' : '#fff') : '#4A423C',
+                          }}
+                        >
+                          {textoDoPrazo(prazo)}
+                        </span>
+                      )}
                       <span
                         style={{
                           alignSelf: 'flex-start',
